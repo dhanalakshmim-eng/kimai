@@ -1,0 +1,29 @@
+version: '3.4'
+
+services:
+  kimai:
+    image: kimai/kimai2:apache
+    container_name: kimai
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      - APP_ENV=prod
+      - DATABASE_URL=mysql://kimai:kimai@db/kimai
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:10.4
+    container_name: kimai_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: kimai
+      MYSQL_USER: kimai
+      MYSQL_PASSWORD: kimai
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
