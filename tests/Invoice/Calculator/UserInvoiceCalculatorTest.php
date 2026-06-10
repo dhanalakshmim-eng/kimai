@@ -15,17 +15,18 @@ use App\Entity\InvoiceTemplate;
 use App\Entity\Project;
 use App\Entity\Timesheet;
 use App\Entity\User;
+use App\Invoice\Calculator\AbstractCalculator;
+use App\Invoice\Calculator\AbstractMergedCalculator;
 use App\Invoice\Calculator\UserInvoiceCalculator;
 use App\Invoice\CalculatorInterface;
 use App\Repository\Query\InvoiceQuery;
 use App\Tests\Invoice\DebugFormatter;
 use App\Tests\Mocks\InvoiceModelFactoryFactory;
+use PHPUnit\Framework\Attributes\CoversClass;
 
-/**
- * @covers \App\Invoice\Calculator\UserInvoiceCalculator
- * @covers \App\Invoice\Calculator\AbstractMergedCalculator
- * @covers \App\Invoice\Calculator\AbstractCalculator
- */
+#[CoversClass(UserInvoiceCalculator::class)]
+#[CoversClass(AbstractMergedCalculator::class)]
+#[CoversClass(AbstractCalculator::class)]
 class UserInvoiceCalculatorTest extends AbstractCalculatorTestCase
 {
     protected function getCalculator(): CalculatorInterface
@@ -109,7 +110,7 @@ class UserInvoiceCalculatorTest extends AbstractCalculatorTestCase
 
         self::assertEquals('user', $sut->getId());
         self::assertEquals(3000.13, $sut->getTotal());
-        self::assertEquals(19, $sut->getVat());
+        $this->assertTax($sut, 19);
         self::assertEquals('EUR', $model->getCurrency());
         self::assertEquals(2521.12, $sut->getSubtotal());
         self::assertEquals(6600, $sut->getTimeWorked());

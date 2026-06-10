@@ -27,7 +27,10 @@ use App\WorkingTime\Model\Year;
 use App\WorkingTime\Model\YearPerUserSummary;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
-final class WorkingTimeService
+/**
+ * @final not final for mocking in tests
+ */
+class WorkingTimeService
 {
     private const LATEST_APPROVAL_PREF = '_latest_approval';
     private const LATEST_APPROVAL_FORMAT = 'Y-m-d H:i:s';
@@ -181,7 +184,7 @@ final class WorkingTimeService
         return $year->getMonth($monthDate);
     }
 
-    // deprecated 3.0 remove $user, fetch from $month->getUser() instead
+    // FIXME deprecated 3.0 remove $user, fetch from $month->getUser() instead
     public function approveMonth(User $user, Month $month, \DateTimeInterface $approvalDate, User $approvedBy): void
     {
         foreach ($month->getDays() as $day) {

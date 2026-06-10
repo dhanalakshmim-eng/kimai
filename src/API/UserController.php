@@ -11,6 +11,7 @@ namespace App\API;
 
 use App\Entity\AccessToken;
 use App\Entity\User;
+use App\Entity\UserPreference;
 use App\Event\PrepareUserEvent;
 use App\Form\API\UserApiCreateForm;
 use App\Form\API\UserApiEditForm;
@@ -23,10 +24,12 @@ use FOS\RestBundle\Controller\Annotations as Rest;
 use FOS\RestBundle\Request\ParamFetcherInterface;
 use FOS\RestBundle\View\View;
 use FOS\RestBundle\View\ViewHandlerInterface;
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -55,7 +58,7 @@ final class UserController extends BaseApiController
     #[Rest\QueryParam(name: 'visible', requirements: '1|2|3', default: 1, strict: true, nullable: true, description: 'Visibility status to filter users: 1=visible, 2=hidden, 3=all')]
     #[Rest\QueryParam(name: 'orderBy', requirements: 'id|username|alias|email', strict: true, nullable: true, description: 'The field by which results will be ordered. Allowed values: id, username, alias, email (default: username)')]
     #[Rest\QueryParam(name: 'order', requirements: 'ASC|DESC', strict: true, nullable: true, description: 'The result order. Allowed values: ASC, DESC (default: ASC)')]
-    #[Rest\QueryParam(name: 'term', description: 'Free search term')]
+    #[Rest\QueryParam(name: 'term', description: 'Free search term', nullable: true)]
     #[Rest\QueryParam(name: 'full', requirements: '0|1|true|false', strict: true, nullable: true, description: 'Allows to fetch full objects including subresources. Allowed values: 0|1|false|true (default: false)')]
     public function cgetAction(ParamFetcherInterface $paramFetcher): Response
     {
@@ -63,7 +66,7 @@ final class UserController extends BaseApiController
         $query->setCurrentUser($this->getUser());
 
         $visible = $paramFetcher->get('visible');
-        if (\is_string($visible) && $visible !== '') {
+        if (is_numeric($visible)) {
             $query->setVisibility((int) $visible);
         }
 
@@ -220,6 +223,57 @@ final class UserController extends BaseApiController
         $accessTokenRepository->deleteAccessToken($accessToken);
 
         $view = new View(null, Response::HTTP_OK);
+        $view->getContext()->setGroups(self::GROUPS_ENTITY);
+
+        return $this->viewHandler->handle($view);
+    }
+
+    /**
+     * Update user preferences
+     */
+    #[IsGranted('edit', 'profile')]
+    #[OA\Response(response: 200, description: 'Sets the value of a configured preference. You cannot create unknown or updated disabled preferences.', content: new OA\JsonContent(ref: '#/components/schemas/UserEntity'))]
+    #[OA\Parameter(name: 'id', description: 'User ID to set the custom-field value for', in: 'path', required: true)]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(type: 'array', items: new OA\Items(new Model(type: UserPreference::class))))]
+    #[Route(path: '/{id}/preferences', requirements: ['id' => '\d+'], methods: ['PATCH'])]
+    public function updateUserPreference(User $profile, Request $request, EventDispatcherInterface $dispatcher, UserService $userService): Response
+    {
+        $event = new PrepareUserEvent($profile, false);
+        $dispatcher->dispatch($event);
+        $dirty = false;
+
+        foreach ($request->request->all() as $preference) {
+            // why is this not handled by FosRestBundle ?
+            if (!\is_array($preference)) {
+                throw new BadRequestHttpException('Invalid request, array expected');
+            }
+
+            if (!\array_key_exists('name', $preference) || !\array_key_exists('value', $preference)) {
+                throw new BadRequestHttpException('Missing required parameter "name" or "value"');
+            }
+
+            $name = $preference['name'];
+            $value = $preference['value'];
+
+            // TODO allow to update preferences that are used internally but not registered via PrepareUserEvent
+
+            if (null === ($meta = $profile->getPreference($name))) {
+                throw $this->createNotFoundException(\sprintf('Unknown custom-field "%s" requested', $name));
+            }
+
+            if (!$meta->isEnabled()) {
+                throw $this->createAccessDeniedException('User tried to update preference: ' . $name);
+            }
+
+            $meta->setValue($value);
+            $dirty = true;
+        }
+
+        if ($dirty) {
+            $userService->saveUser($profile);
+        }
+
+        $view = new View($profile, 200);
         $view->getContext()->setGroups(self::GROUPS_ENTITY);
 
         return $this->viewHandler->handle($view);

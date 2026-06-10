@@ -32,6 +32,8 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 final class ProjectService
 {
+    private int $generatedNumbers = 0;
+
     public function __construct(
         private readonly ProjectRepository $repository,
         private readonly SystemConfiguration $configuration,
@@ -39,6 +41,11 @@ final class ProjectService
         private readonly ValidatorInterface $validator
     )
     {
+    }
+
+    public function loadMetaFields(Project $project): void
+    {
+        $this->dispatcher->dispatch(new ProjectMetaDefinitionEvent($project));
     }
 
     public function createNewProject(?Customer $customer = null): Project
@@ -50,7 +57,7 @@ final class ProjectService
             $project->setCustomer($customer);
         }
 
-        $this->dispatcher->dispatch(new ProjectMetaDefinitionEvent($project));
+        $this->loadMetaFields($project);
         $this->dispatcher->dispatch(new ProjectCreateEvent($project));
 
         return $project;
@@ -90,10 +97,10 @@ final class ProjectService
         return $project;
     }
 
-    public function deleteProject(Project $project): void
+    public function deleteProject(Project $project, ?Project $replace = null): void
     {
-        $this->dispatcher->dispatch(new ProjectDeleteEvent($project));
-        $this->repository->deleteProject($project);
+        $this->dispatcher->dispatch(new ProjectDeleteEvent($project, $replace));
+        $this->repository->deleteProject($project, $replace);
     }
 
     /**
@@ -145,7 +152,8 @@ final class ProjectService
         }
 
         // we cannot use max(number) because a varchar column returns unexpected results
-        $start = $this->repository->countProject();
+        $count = $this->repository->countProject();
+        $start = $count + $this->generatedNumbers;
         $i = 0;
         $createDate = new \DateTimeImmutable();
 
@@ -176,6 +184,10 @@ final class ProjectService
         if ($project !== null) {
             return null;
         }
+
+        // Remember how far we advanced — including iterations spent skipping numbers that
+        // already exist — so the next call on this instance starts beyond the issued number.
+        $this->generatedNumbers = $start - $count;
 
         return $number;
     }

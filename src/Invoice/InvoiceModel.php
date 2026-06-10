@@ -9,39 +9,30 @@
 
 namespace App\Invoice;
 
-use App\Activity\ActivityStatisticService;
-use App\Customer\CustomerStatisticService;
 use App\Entity\Customer;
 use App\Entity\ExportableItem;
 use App\Entity\InvoiceTemplate;
 use App\Entity\User;
-use App\Invoice\Hydrator\InvoiceItemDefaultHydrator;
-use App\Invoice\Hydrator\InvoiceModelActivityHydrator;
-use App\Invoice\Hydrator\InvoiceModelCustomerHydrator;
-use App\Invoice\Hydrator\InvoiceModelDefaultHydrator;
-use App\Invoice\Hydrator\InvoiceModelProjectHydrator;
-use App\Invoice\Hydrator\InvoiceModelUserHydrator;
-use App\Project\ProjectStatisticService;
 use App\Repository\Query\InvoiceQuery;
+use App\Timesheet\RateCalculator\RateCalculatorMode;
+use Symfony\Component\DependencyInjection\Attribute\Exclude;
 
 /**
  * InvoiceModel is the ONLY value that a RendererInterface receives for generating the invoice,
  * besides the InvoiceDocument which is used as a "template".
  */
+#[Exclude]
 final class InvoiceModel
 {
-    private ?Customer $customer = null;
     private ?InvoiceQuery $query = null;
     /**
      * @var ExportableItem[]
      */
     private array $entries = [];
-    private ?InvoiceTemplate $template = null;
     private ?CalculatorInterface $calculator = null;
     private ?NumberGeneratorInterface $generator = null;
     private \DateTimeInterface $invoiceDate;
     private ?User $user = null;
-    private InvoiceFormatter $formatter;
     /**
      * @var InvoiceModelHydrator[]
      */
@@ -61,16 +52,14 @@ final class InvoiceModel
     /**
      * @internal use InvoiceModelFactory
      */
-    public function __construct(InvoiceFormatter $formatter, CustomerStatisticService $customerStatistic, ProjectStatisticService $projectStatistic, ActivityStatisticService $activityStatistic)
+    public function __construct(
+        private InvoiceFormatter $formatter,
+        private readonly Customer $customer,
+        private readonly InvoiceTemplate $template,
+        private readonly RateCalculatorMode $rateCalculatorMode
+    )
     {
         $this->invoiceDate = new \DateTimeImmutable();
-        $this->formatter = $formatter;
-        $this->addModelHydrator(new InvoiceModelDefaultHydrator());
-        $this->addModelHydrator(new InvoiceModelCustomerHydrator($customerStatistic));
-        $this->addModelHydrator(new InvoiceModelProjectHydrator($projectStatistic));
-        $this->addModelHydrator(new InvoiceModelActivityHydrator($activityStatistic));
-        $this->addModelHydrator(new InvoiceModelUserHydrator());
-        $this->addItemHydrator(new InvoiceItemDefaultHydrator());
     }
 
     /**
@@ -111,6 +100,35 @@ final class InvoiceModel
         return $this->entries;
     }
 
+    public function getInvoicePeriod(): InvoicePeriod
+    {
+        $min = null;
+        $max = null;
+
+        foreach ($this->getEntries() as $entry) {
+            if ($min === null || $min > $entry->getBegin()) {
+                $min = $entry->getBegin();
+            }
+
+            if ($max === null || $max < $entry->getEnd()) {
+                $max = $entry->getEnd();
+            }
+        }
+
+        if ($min === null) {
+            $min = $this->getQuery()?->getBegin() ?? $this->invoiceDate;
+        }
+
+        if ($max === null) {
+            $max = $this->getQuery()?->getEnd() ?? $this->invoiceDate;
+        }
+
+        return new InvoicePeriod(
+            \DateTimeImmutable::createFromInterface($min),
+            \DateTimeImmutable::createFromInterface($max)
+        );
+    }
+
     /**
      * @param ExportableItem[] $entries
      * @return InvoiceModel
@@ -138,37 +156,20 @@ final class InvoiceModel
         return $this;
     }
 
-    public function getTemplate(): ?InvoiceTemplate
+    public function getTemplate(): InvoiceTemplate
     {
         return $this->template;
     }
 
-    public function setTemplate(InvoiceTemplate $template): void
-    {
-        $this->template = $template;
-    }
-
-    public function getCustomer(): ?Customer
+    public function getCustomer(): Customer
     {
         return $this->customer;
     }
 
-    public function setCustomer(Customer $customer): void
-    {
-        $this->customer = $customer;
-    }
-
-    /**
-     * Requires the template and invoice date to be set
-     */
     public function getDueDate(): \DateTimeInterface
     {
         $date = \DateTimeImmutable::createFromInterface($this->getInvoiceDate());
-
-        $dueDays = 14;
-        if ($this->getTemplate() !== null) {
-            $dueDays = $this->getTemplate()->getDueDays();
-        }
+        $dueDays = $this->template->getDueDays();
 
         return $date->add(new \DateInterval('P' . $dueDays . 'D'));
     }
@@ -217,6 +218,11 @@ final class InvoiceModel
         return $this->calculator;
     }
 
+    public function getRateCalculatorMode(): RateCalculatorMode
+    {
+        return $this->rateCalculatorMode;
+    }
+
     /**
      * Returns the user currently creating the invoice.
      */
@@ -246,8 +252,8 @@ final class InvoiceModel
 
     public function getCurrency(): string
     {
-        if (null !== $this->getCustomer() && $this->getCustomer()->getCurrency() !== null) {
-            return $this->getCustomer()->getCurrency();
+        if ($this->customer->getCurrency() !== null) {
+            return $this->customer->getCurrency();
         }
 
         return Customer::DEFAULT_CURRENCY;

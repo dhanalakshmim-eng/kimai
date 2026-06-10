@@ -26,19 +26,18 @@ use App\Repository\Search\SearchHelper;
 use App\Utils\Pagination;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\ORM\EntityRepository;
-use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\Query\Expr\Andx;
 use Doctrine\ORM\QueryBuilder;
 
 /**
- * @extends \Doctrine\ORM\EntityRepository<Activity>
+ * @extends EntityRepository<Activity>
  */
 class ActivityRepository extends EntityRepository
 {
     /**
-     * @param int[] $activityIds
+     * @param array<int, string|int> $activityIds
      * @return array<Activity>
      */
     public function findByIds(array $activityIds): array
@@ -414,7 +413,7 @@ class ActivityRepository extends EntityRepository
             $em->remove($delete);
             $em->flush();
             $em->commit();
-        } catch (ORMException $ex) {
+        } catch (\Exception $ex) {
             $em->rollback();
             throw $ex;
         }

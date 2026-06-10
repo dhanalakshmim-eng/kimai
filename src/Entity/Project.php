@@ -56,13 +56,14 @@ class Project implements EntityWithMetaFields, EntityWithBudget, CreatedAt
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     #[Assert\NotNull]
     #[Serializer\Expose]
-    #[Serializer\Groups(['Subresource', 'Expanded'])]
+    #[Serializer\Groups(['Expanded'])]
     #[OA\Property(ref: '#/components/schemas/Customer')]
     private ?Customer $customer = null;
     /**
      * Project name
      */
     #[ORM\Column(name: 'name', type: Types::STRING, length: 150, nullable: false)]
+    #[Constraints\NoSpecialCharacters]
     #[Assert\NotNull]
     #[Assert\Length(min: 2, max: 150)]
     #[Serializer\Expose]
@@ -75,7 +76,7 @@ class Project implements EntityWithMetaFields, EntityWithBudget, CreatedAt
     #[ORM\Column(name: 'order_number', type: Types::TEXT, length: 50, nullable: true)]
     #[Assert\Length(max: 50)]
     #[Serializer\Expose]
-    #[Serializer\Groups(['Project_Entity'])]
+    #[Serializer\Groups(['Default'])]
     #[Exporter\Expose(label: 'orderNumber')]
     private ?string $orderNumber = null;
     /**
@@ -85,7 +86,7 @@ class Project implements EntityWithMetaFields, EntityWithBudget, CreatedAt
      */
     #[ORM\Column(name: 'order_date', type: Types::DATETIME_MUTABLE, nullable: true)]
     #[Serializer\Expose]
-    #[Serializer\Groups(['Project_Entity'])]
+    #[Serializer\Groups(['Default'])]
     #[Serializer\Type(name: "DateTime<'Y-m-d'>")]
     #[Serializer\Accessor(getter: 'getOrderDate')]
     private ?\DateTime $orderDate = null;
@@ -96,7 +97,7 @@ class Project implements EntityWithMetaFields, EntityWithBudget, CreatedAt
      */
     #[ORM\Column(name: 'start', type: Types::DATETIME_MUTABLE, nullable: true)]
     #[Serializer\Expose]
-    #[Serializer\Groups(['Project'])]
+    #[Serializer\Groups(['Default'])]
     #[Serializer\Type(name: "DateTime<'Y-m-d'>")]
     #[Serializer\Accessor(getter: 'getStart')]
     private ?\DateTime $start = null;
@@ -107,7 +108,7 @@ class Project implements EntityWithMetaFields, EntityWithBudget, CreatedAt
      */
     #[ORM\Column(name: 'end', type: Types::DATETIME_MUTABLE, nullable: true)]
     #[Serializer\Expose]
-    #[Serializer\Groups(['Project'])]
+    #[Serializer\Groups(['Default'])]
     #[Serializer\Type(name: "DateTime<'Y-m-d'>")]
     #[Serializer\Accessor(getter: 'getEnd')]
     private ?\DateTime $end = null;
@@ -141,7 +142,7 @@ class Project implements EntityWithMetaFields, EntityWithBudget, CreatedAt
      */
     #[ORM\OneToMany(mappedBy: 'project', targetEntity: ProjectMeta::class, cascade: ['persist'])]
     #[Serializer\Expose]
-    #[Serializer\Groups(['Project'])]
+    #[Serializer\Groups(['Default'])]
     #[Serializer\Type(name: 'array<App\Entity\ProjectMeta>')]
     #[Serializer\SerializedName('metaFields')]
     #[Serializer\Accessor(getter: 'getVisibleMetaFields')]
@@ -170,6 +171,7 @@ class Project implements EntityWithMetaFields, EntityWithBudget, CreatedAt
     #[Serializer\Groups(['Default'])]
     private bool $globalActivities = true;
     #[ORM\Column(name: 'number', type: Types::STRING, length: 10, nullable: true)]
+    #[Constraints\NoSpecialCharacters]
     #[Assert\Length(max: 10)]
     #[Serializer\Expose]
     #[Serializer\Groups(['Default'])]

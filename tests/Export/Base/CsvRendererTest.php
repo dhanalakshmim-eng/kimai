@@ -9,33 +9,31 @@
 
 namespace App\Tests\Export\Base;
 
-use App\Entity\User;
+use App\Export\Base\AbstractSpreadsheetRenderer;
 use App\Export\Base\CsvRenderer;
-use App\Export\Base\SpreadsheetRenderer;
+use App\Export\ColumnConverter;
+use App\Export\DefaultTemplate;
+use App\Export\Package\SpoutSpreadsheet;
 use App\Tests\Export\Renderer\AbstractRendererTestCase;
 use App\Tests\Mocks\MetaFieldColumnSubscriberMock;
-use Psr\Log\LoggerInterface;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * @covers \App\Export\Base\CsvRenderer
- * @covers \App\Export\Base\SpreadsheetRenderer
- * @covers \App\Export\Base\RendererTrait
- * @covers \App\Export\Package\SpoutSpreadsheet
- * @group integration
- */
+#[CoversClass(AbstractSpreadsheetRenderer::class)]
+#[CoversClass(SpoutSpreadsheet::class)]
+#[CoversClass(CsvRenderer::class)]
+#[Group('integration')]
 class CsvRendererTest extends AbstractRendererTestCase
 {
-    protected function getAbstractRenderer(bool $exportDecimal = false): CsvRenderer
+    protected function getAbstractRenderer(?string $locale): CsvRenderer
     {
-        $user = $this->createMock(User::class);
-        $user->expects($this->any())->method('isExportDecimal')->willReturn($exportDecimal);
-
         $security = $this->createMock(Security::class);
-        $security->expects($this->any())->method('getUser')->willReturn($user);
+        $security->expects($this->any())->method('getUser')->willReturn(null);
         $security->expects($this->any())->method('isGranted')->willReturn(true);
 
         $translator = $this->getContainer()->get(TranslatorInterface::class);
@@ -44,34 +42,36 @@ class CsvRendererTest extends AbstractRendererTestCase
         $dispatcher = new EventDispatcher();
         $dispatcher->addSubscriber(new MetaFieldColumnSubscriberMock());
 
-        return new CsvRenderer(new SpreadsheetRenderer($dispatcher, $security, $this->createMock(LoggerInterface::class)), $translator);
+        $converter = new ColumnConverter($dispatcher, $security);
+
+        $template = new DefaultTemplate($dispatcher, 'csv', $locale);
+
+        return new CsvRenderer($converter, $translator, $template);
     }
 
-    public function testConfiguration(): void
+    public function testConfigurationFromTemplate(): void
     {
-        $sut = $this->getAbstractRenderer();
+        $sut = $this->getAbstractRenderer('en');
 
+        self::assertEquals('csv', $sut->getType());
         self::assertEquals('csv', $sut->getId());
         self::assertEquals('default', $sut->getTitle());
-
-        $sut->setTitle('foo-bar');
-        self::assertEquals('foo-bar', $sut->getTitle());
-
-        $sut->setId('bar-id');
-        self::assertEquals('bar-id', $sut->getId());
+        self::assertFalse($sut->isInternal());
+        $sut->setInternal(true);
+        self::assertTrue($sut->isInternal());
     }
 
     public static function getTestModel(): array
     {
         $en = [
             'Date', 'From', 'To', 'Duration', 'Currency', 'Price', 'Internal price', 'Hourly price', 'Fixed price', 'Name',
-            'User', 'Staff number', 'Customer', 'Project', 'Activity', 'Description', 'Billable', 'Tags',
+            'User', 'E-mail', 'Staff number', 'Customer', 'Project', 'Activity', 'Description', 'Billable', 'Tags',
             'Type', 'category', 'Account', 'Project number', 'VAT-ID', 'Order number',
             'Working place', 'Working place', 'Working place', 'Working place', 'Working place', 'Working place', 'mypref',
         ];
         $de = [
             'Datum', 'Von', 'Bis', 'Dauer', 'Währung', 'Preis', 'Interner Preis', 'Preis pro Stunde', 'Festpreis', 'Name',
-            'Benutzer', 'Personalnummer', 'Kunde', 'Projekt', 'Tätigkeit', 'Beschreibung', 'Abrechenbar', 'Schlagworte',
+            'Benutzer', 'E-Mail', 'Personalnummer', 'Kunde', 'Projekt', 'Tätigkeit', 'Beschreibung', 'Abrechenbar', 'Schlagworte',
             'Typ', 'category', 'Kundennummer', 'Projektnummer', 'Umsatzsteuer-ID', 'Bestellnummer',
             'Working place', 'Working place', 'Working place', 'Working place', 'Working place', 'Working place', 'mypref',
         ];
@@ -82,16 +82,13 @@ class CsvRendererTest extends AbstractRendererTestCase
         ];
     }
 
-    /**
-     * @dataProvider getTestModel
-     */
+    #[DataProvider('getTestModel')]
     public function testRender(string $totalDuration, string $totalRate, string $expectedRate, int $expectedRows, int $expectedDescriptions, int $expectedUser1, int $expectedUser2, int $expectedUser3, bool $exportDecimal, ?string $locale, array $header): void
     {
-        $sut = $this->getAbstractRenderer($exportDecimal);
-        $sut->setLocale($locale);
+        $sut = $this->getAbstractRenderer($locale);
 
-        /** @var BinaryFileResponse $response */
-        $response = $this->render($sut);
+        $response = $this->render($sut, $exportDecimal);
+        self::assertInstanceOf(BinaryFileResponse::class, $response);
 
         $file = $response->getFile();
         $prefix = date('Ymd');
@@ -118,10 +115,10 @@ class CsvRendererTest extends AbstractRendererTestCase
         self::assertFalse(file_exists($file->getRealPath()));
 
         $all = [];
-        $rows = str_getcsv($content2, PHP_EOL);
+        $rows = array_filter(explode(PHP_EOL, $content2), function (string $line) { return $line !== ''; });
         foreach ($rows as $row) {
             self::assertIsString($row);
-            $all[] = str_getcsv($row);
+            $all[] = str_getcsv($row, ',', '"', '\\');
         }
 
         self::assertEquals($header, $all[0]);
@@ -139,6 +136,7 @@ class CsvRendererTest extends AbstractRendererTestCase
             '84',
             'Kevin',
             'kevin',
+            '',
             '',
             'Customer Name',
             'project name',
@@ -175,6 +173,7 @@ class CsvRendererTest extends AbstractRendererTestCase
             'niveK',
             'nivek',
             '',
+            '',
             'Customer Name',
             'project name',
             'activity description',
@@ -200,6 +199,6 @@ class CsvRendererTest extends AbstractRendererTestCase
         self::assertEquals($expected, $all[5]);
         self::assertEquals($expected2, $all[6]);
         self::assertEquals(\count($expected), \count($all[0]));
-        self::assertEquals('foo', $all[4][17]);
+        self::assertEquals('foo', $all[4][18]);
     }
 }

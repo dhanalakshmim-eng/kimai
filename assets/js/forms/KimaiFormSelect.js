@@ -49,6 +49,7 @@ export default class KimaiFormSelect extends KimaiFormTomselectPlugin {
      */
     activateSelectPickerByElement(node)
     {
+        // TODO cannot update tom-select to >= 2.6.0 due to https://github.com/orchidjs/tom-select/pull/993#issuecomment-4489286080
         let plugins = ['change_listener'];
 
         const isMultiple = node.multiple !== undefined && node.multiple === true;
@@ -80,15 +81,17 @@ export default class KimaiFormSelect extends KimaiFormTomselectPlugin {
             // if there are more than X entries, the other ones are hidden and can only be found
             // by typing some characters to trigger the internal option search
             // see App\Form\Type\TagsType::MAX_AMOUNT_SELECT
+            // TODO make this value configurable with a data attribute
             maxOptions: 500,
             sortField:[{field: '$order'}, {field: '$score'}],
-        };
-
-        let render = {
+            // required so it works in table.responsive, but requires z-index 1056, because bootstrap modal would otherwise hide it
+            dropdownParent: 'body',
             onOptionAdd: (value) => {
                 node.dispatchEvent(new CustomEvent('create', {detail: {'value': value}}));
-            },
+            }
         };
+
+        let render = {};
 
         const rendererType = (node.dataset['renderer'] !== undefined) ? node.dataset['renderer'] : 'default';
         options.render = {...render, ...this.getRenderer(rendererType)};

@@ -14,6 +14,10 @@
         <source>theme.avatar_url</source>
         <target>Allow the use of URLs for avatar images</target>
       </trans-unit>
+      <trans-unit id="uf2_qIW" resname="user_auth_wizard">
+        <source>user_auth_wizard</source>
+        <target>Show setup wizard for new users</target>
+      </trans-unit>
       <trans-unit id="FaGqoTT" resname="timesheet.mode">
         <source>timesheet.mode</source>
         <target>Timetracking mode</target>
@@ -108,7 +112,7 @@
       </trans-unit>
       <trans-unit id="BYy.c1V" resname="calendar.slot_duration">
         <source>calendar.slot_duration</source>
-        <target>Slot duration for week- and day view (format: hh:mm:ss)</target>
+        <target>Slot duration for week- and day view</target>
       </trans-unit>
       <trans-unit id="nwuLBP4" resname="branding">
         <source>branding</source>
@@ -309,6 +313,10 @@
       <trans-unit id="pBxkAF_" resname="copy_teams_on_create" approved="yes">
         <source>copy_teams_on_create</source>
         <target>Take over teams from the logged-in user when creating new entries</target>
+      </trans-unit>
+      <trans-unit id="6AaVxB2" resname="invoice.rounding_mode" approved="yes">
+        <source>invoice.rounding_mode</source>
+        <target>Rounding mode</target>
       </trans-unit>
     </body>
   </file>

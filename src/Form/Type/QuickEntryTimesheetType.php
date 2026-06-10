@@ -53,7 +53,7 @@ final class QuickEntryTimesheetType extends AbstractType
 
         $builder->addEventListener(
             FormEvents::POST_SET_DATA,
-            function (FormEvent $event) use ($durationOptions) {
+            function (FormEvent $event) use ($durationOptions): void {
                 /** @var Timesheet|null $data */
                 $data = $event->getData();
                 if (null === $data || $data->isRunning()) {
@@ -61,7 +61,7 @@ final class QuickEntryTimesheetType extends AbstractType
                 }
 
                 if ($data instanceof Timesheet && !$this->security->isGranted('edit', $data)) {
-                    $event->getForm()->remove('duration');
+                    // do not call $event->getForm()->remove() this would change the field order
                     $event->getForm()->add('duration', DurationType::class, array_merge(['disabled' => true], $durationOptions));
 
                     $mainForm = $event->getForm()->getParent()?->getParent();
@@ -79,7 +79,7 @@ final class QuickEntryTimesheetType extends AbstractType
                             continue;
                         }
                         $type = \get_class($child->getConfig()->getType()->getInnerType());
-                        $mainForm->remove($key);
+                        // do not call $mainForm->remove() this would change the field order
                         $mainForm->add($key, $type, array_merge($child->getConfig()->getOptions(), ['disabled' => true]));
                     }
                 }
@@ -89,12 +89,13 @@ final class QuickEntryTimesheetType extends AbstractType
         // make sure that duration is mapped back to end field
         $builder->addEventListener(
             FormEvents::SUBMIT,
-            function (FormEvent $event) {
+            function (FormEvent $event): void {
                 /** @var Timesheet $data */
                 $data = $event->getData();
                 $duration = $data->getDuration(false);
                 try {
                     if (null !== $duration) {
+                        $duration += $data->getBreak();
                         $end = clone $data->getBegin();
                         $end->modify('+ ' . abs($duration) . ' seconds');
                         $data->setEnd($end);

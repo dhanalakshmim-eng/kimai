@@ -30,12 +30,13 @@ class WorkingTime
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     #[Assert\NotNull]
     private ?User $user = null;
-    #[ORM\Column(name: 'date', type: Types::DATE_MUTABLE, nullable: false)]
+    #[ORM\Column(name: 'date', type: Types::DATE_IMMUTABLE, nullable: false)]
     #[Assert\NotNull]
-    private \DateTimeInterface $date;
+    private \DateTimeImmutable $date;
     #[ORM\Column(name: 'expected', type: Types::INTEGER, nullable: false)]
     #[Assert\NotNull]
     private int $expectedTime = 0;
+    private ?int $originalExpectedTime = null;
     #[ORM\Column(name: 'actual', type: Types::INTEGER, nullable: false)]
     #[Assert\NotNull]
     private int $actualTime = 0;
@@ -46,7 +47,7 @@ class WorkingTime
     #[Assert\NotNull]
     private ?\DateTimeImmutable $approvedAt = null;
 
-    public function __construct(User $user, \DateTimeInterface $date)
+    public function __construct(User $user, \DateTimeImmutable $date)
     {
         $this->user = $user;
         $this->date = $date;
@@ -62,7 +63,7 @@ class WorkingTime
         return $this->user;
     }
 
-    public function getDate(): \DateTimeInterface
+    public function getDate(): \DateTimeImmutable
     {
         return $this->date;
     }
@@ -75,6 +76,39 @@ class WorkingTime
     public function setExpectedTime(int $expectedTime): void
     {
         $this->expectedTime = $expectedTime;
+        $this->storeOriginalExpectedTime();
+    }
+
+    public function storeOriginalExpectedTime(): void
+    {
+        if ($this->originalExpectedTime === null) {
+            $this->originalExpectedTime = $this->expectedTime;
+        }
+    }
+
+    public function getOriginalExpectedTime(): int
+    {
+        $this->storeOriginalExpectedTime();
+
+        return $this->originalExpectedTime ?? 0;
+    }
+
+    public function halveExpectedTime(): int
+    {
+        $this->storeOriginalExpectedTime();
+
+        $reduceBy = ($this->getOriginalExpectedTime() / 2);
+
+        $this->expectedTime = $this->expectedTime - $reduceBy;
+
+        return $reduceBy;
+    }
+
+    public function emptyExpectedTime(): void
+    {
+        $this->storeOriginalExpectedTime();
+
+        $this->expectedTime = 0;
     }
 
     public function getActualTime(): int

@@ -26,7 +26,7 @@ use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 
 /**
- * @extends \Doctrine\ORM\EntityRepository<Invoice>
+ * @extends EntityRepository<Invoice>
  */
 class InvoiceRepository extends EntityRepository
 {
@@ -205,6 +205,11 @@ class InvoiceRepository extends EntityRepository
         if ($query->hasStatus()) {
             $qb->andWhere($qb->expr()->in('i.status', ':status'));
             $qb->setParameter('status', $query->getStatus());
+        }
+
+        if ($query->hasUsers()) {
+            $qb->andWhere($qb->expr()->in('i.user', ':users'));
+            $qb->setParameter('users', $query->getUsers());
         }
 
         $orderBy = $query->getOrderBy();

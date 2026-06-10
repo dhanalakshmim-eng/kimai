@@ -16,11 +16,10 @@ use App\Entity\User;
 use App\Tests\DataFixtures\ExportTemplateFixtures;
 use App\Tests\DataFixtures\TimesheetFixtures;
 use Doctrine\ORM\EntityManager;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Component\DomCrawler\Field\FormField;
 
-/**
- * @group integration
- */
+#[Group('integration')]
 class ExportControllerTest extends AbstractControllerBaseTestCase
 {
     public function testIsSecure(): void
@@ -67,7 +66,7 @@ class ExportControllerTest extends AbstractControllerBaseTestCase
             ->setUser($user)
             ->setAmount(20)
             ->setStartDate($begin)
-            ->setCallback(function (Timesheet $timesheet) use ($team, $em) {
+            ->setCallback(function (Timesheet $timesheet) use ($team, $em): void {
                 $team->addProject($timesheet->getProject());
                 $em->persist($team);
             })
@@ -100,16 +99,14 @@ class ExportControllerTest extends AbstractControllerBaseTestCase
             $titles[] = trim($th->textContent);
         }
         self::assertEquals([
-            '', 'Date', 'User', 'Project', 'Activity', 'Description', 'Tags', 'Duration', 'Unit price', 'Internal price', 'Total price', '',
+            '', 'Date', 'From', 'To', 'User', 'Project', 'Activity', 'Description', 'Tags', 'Duration', 'Unit price', 'Internal price', 'Total price', '',
         ], $titles);
 
         // assert export type buttons are available
         $expected = [
             'csv' => 'csv',
-            'default.html.twig' => 'default.html.twig',
-            'default-budget.pdf.twig' => 'default-budget.pdf.twig',
-            'default-internal.pdf.twig' => 'default-internal.pdf.twig',
-            'default.pdf.twig' => 'default.pdf.twig',
+            'print' => 'html',
+            'pdf' => 'pdf',
             'xlsx' => 'xlsx'
         ];
         $node = $client->getCrawler()->filter('#export-buttons .startExportBtn');
@@ -165,10 +162,8 @@ class ExportControllerTest extends AbstractControllerBaseTestCase
         // assert export type buttons are available
         $expected = [
             'csv' => 'csv',
-            'default.html.twig' => 'default.html.twig',
-            'default-budget.pdf.twig' => 'default-budget.pdf.twig',
-            'default-internal.pdf.twig' => 'default-internal.pdf.twig',
-            'default.pdf.twig' => 'default.pdf.twig',
+            'print' => 'html',
+            'pdf' => 'pdf',
             'xlsx' => 'xlsx'
         ];
         $node = $client->getCrawler()->filter('#export-buttons .startExportBtn');
@@ -232,7 +227,7 @@ class ExportControllerTest extends AbstractControllerBaseTestCase
 
         // don't add daterange to make sure the current month is the default range
         $client->submit($form, [
-            'renderer' => 'default.html.twig',
+            'renderer' => 'print',
             'markAsExported' => 1
         ]);
 
@@ -268,6 +263,24 @@ class ExportControllerTest extends AbstractControllerBaseTestCase
     public function testCreateTemplateIsSecureForRole(): void
     {
         $this->assertUrlIsSecuredForRole(User::ROLE_USER, '/export/template-create');
+    }
+
+    public function testCreateTemplateIsSecureForTeamlead(): void
+    {
+        // GHSA-rw46-qg69-vg6h
+        $this->assertUrlIsSecuredForRole(User::ROLE_TEAMLEAD, '/export/template-create');
+    }
+
+    public function testEditTemplateIsSecureForTeamlead(): void
+    {
+        // GHSA-rw46-qg69-vg6h
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_TEAMLEAD);
+        /** @var ExportTemplate[] $templates */
+        $templates = $this->importFixture(new ExportTemplateFixtures());
+        $id = $templates[0]->getId();
+
+        $this->request($client, $this->createUrl('/export/template-edit/' . $id));
+        $this->assertAccessDenied($client);
     }
 
     public function testCreateTemplateAction(): void

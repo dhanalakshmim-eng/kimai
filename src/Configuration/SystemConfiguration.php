@@ -91,7 +91,6 @@ final class SystemConfiguration
             $array = &$replaced;
             while (\count($keys) > 1) {
                 $search = array_shift($keys);
-                /* @phpstan-ignore-next-line  */
                 if (!\array_key_exists($search, $array) || !\is_array($array[$search])) {
                     $array[$search] = [];
                 }
@@ -174,6 +173,11 @@ final class SystemConfiguration
         }
 
         return (bool) $this->find('user.registration');
+    }
+
+    public function getAuthenticationTheme(): string
+    {
+        return $this->getString('user.theme', 'auto');
     }
 
     public function getPasswordResetTokenLifetime(): int
@@ -323,11 +327,6 @@ final class SystemConfiguration
         return $this->find('defaults.customer.timezone');
     }
 
-    public function getCustomerDefaultCurrency(): string
-    {
-        return $this->find('defaults.customer.currency');
-    }
-
     public function getCustomerDefaultCountry(): string
     {
         return $this->find('defaults.customer.country');
@@ -340,20 +339,40 @@ final class SystemConfiguration
         return $this->find('defaults.user.timezone');
     }
 
-    public function getUserDefaultTheme(): ?string
+    public function getUserDefaultTheme(): string
     {
-        return $this->find('defaults.user.theme');
+        return $this->getString('defaults.user.theme', 'auto');
     }
 
     public function getUserDefaultLanguage(): string
     {
-        return $this->find('defaults.user.language');
+        return $this->getString('defaults.user.language', 'en');
     }
 
-    // TODO this is only used to display the hourly rate in the user profile
+    public function getDefaultCurrency(): string
+    {
+        return $this->getString('defaults.customer.currency', 'EUR');
+    }
+
+    /**
+     * @deprecated use getDefaultCurrency() instead
+     */
+    public function getCustomerDefaultCurrency(): string
+    {
+        return $this->getDefaultCurrency();
+    }
+
+    /**
+     * @deprecated use getDefaultCurrency() instead
+     */
     public function getUserDefaultCurrency(): string
     {
-        return $this->find('defaults.user.currency');
+        return $this->getDefaultCurrency();
+    }
+
+    public function isUserWizardActive(): bool
+    {
+        return (bool) $this->find('user.wizard');
     }
 
     // ========== Timesheet configurations ==========
@@ -456,6 +475,11 @@ final class SystemConfiguration
     public function isBreakTimeEnabled(): bool
     {
         return (bool) $this->find('timesheet.rules.break_time_active');
+    }
+
+    public function getExportTimeout(): int
+    {
+        return (int) $this->find('export.timeout');
     }
 
     // ========== Company configurations ==========

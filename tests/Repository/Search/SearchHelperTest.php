@@ -17,13 +17,16 @@ use App\Repository\Search\SearchHelper;
 use App\Utils\SearchTerm;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr;
+use Doctrine\ORM\Query\Expr\Andx;
+use Doctrine\ORM\Query\Expr\Comparison;
+use Doctrine\ORM\Query\Expr\Orx;
 use Doctrine\ORM\Query\Parameter;
 use Doctrine\ORM\QueryBuilder;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers \App\Repository\Search\SearchHelper
- */
+#[CoversClass(SearchHelper::class)]
 class SearchHelperTest extends TestCase
 {
     public function testSearchTermIsNullDoesNotModifyQueryBuilder(): void
@@ -78,70 +81,70 @@ class SearchHelperTest extends TestCase
         self::assertCount(1, $parts['join']);
         self::assertArrayHasKey('testFoo', $parts['join']);
         self::assertArrayHasKey('where', $parts);
-        self::assertInstanceOf(Expr\Andx::class, $parts['where']);
+        self::assertInstanceOf(Andx::class, $parts['where']);
         $whereParts = $parts['where'];
         self::assertEquals(1, $whereParts->count());
 
         $whereAnd = $whereParts->getParts()[0];
-        self::assertInstanceOf(Expr\Andx::class, $whereAnd);
+        self::assertInstanceOf(Andx::class, $whereAnd);
         self::assertCount(4, $whereAnd->getParts());
 
         // meta fields
         $where = $whereAnd->getParts()[0];
-        self::assertInstanceOf(Expr\Andx::class, $where);
+        self::assertInstanceOf(Andx::class, $where);
         $compareParts = $where->getParts();
         self::assertCount(2, $compareParts);
 
-        self::assertInstanceOf(Expr\Comparison::class, $compareParts[0]);
+        self::assertInstanceOf(Comparison::class, $compareParts[0]);
         self::assertEquals('meta0.name', $compareParts[0]->getLeftExpr());
         self::assertEquals('=', $compareParts[0]->getOperator());
         self::assertEquals(':metaName0', $compareParts[0]->getRightExpr());
 
-        self::assertInstanceOf(Expr\Comparison::class, $compareParts[1]);
+        self::assertInstanceOf(Comparison::class, $compareParts[1]);
         self::assertEquals('meta0.value', $compareParts[1]->getLeftExpr());
         self::assertEquals('LIKE', $compareParts[1]->getOperator());
         self::assertEquals(':metaValue0', $compareParts[1]->getRightExpr());
 
         // negated search terms
         $where = $whereAnd->getParts()[1];
-        self::assertInstanceOf(Expr\Orx::class, $where);
+        self::assertInstanceOf(Orx::class, $where);
         $compareParts = $where->getParts();
         self::assertCount(2, $compareParts);
 
         self::assertEquals('testFoo.bar IS NULL', $compareParts[0]);
 
-        self::assertInstanceOf(Expr\Comparison::class, $compareParts[1]);
+        self::assertInstanceOf(Comparison::class, $compareParts[1]);
         self::assertEquals('testFoo.bar', $compareParts[1]->getLeftExpr());
         self::assertEquals('NOT LIKE', $compareParts[1]->getOperator());
         self::assertEquals(':searchTerm0', $compareParts[1]->getRightExpr());
 
         $where = $whereAnd->getParts()[2];
-        self::assertInstanceOf(Expr\Orx::class, $where);
+        self::assertInstanceOf(Orx::class, $where);
         $compareParts = $where->getParts();
         self::assertCount(2, $compareParts);
 
         self::assertEquals('testFoo.tmp IS NULL', $compareParts[0]);
 
-        self::assertInstanceOf(Expr\Comparison::class, $compareParts[1]);
+        self::assertInstanceOf(Comparison::class, $compareParts[1]);
         self::assertEquals('testFoo.tmp', $compareParts[1]->getLeftExpr());
         self::assertEquals('NOT LIKE', $compareParts[1]->getOperator());
         self::assertEquals(':searchTerm1', $compareParts[1]->getRightExpr());
 
         // regular search terms
         $where = $whereAnd->getParts()[3];
-        self::assertInstanceOf(Expr\Andx::class, $where);
+        self::assertInstanceOf(Andx::class, $where);
         $compareParts = $where->getParts();
         self::assertCount(1, $compareParts);
-        self::assertInstanceOf(Expr\Orx::class, $compareParts[0]);
+        self::assertInstanceOf(Orx::class, $compareParts[0]);
         $orParts = $compareParts[0]->getParts();
         self::assertCount(2, $orParts);
 
-        self::assertInstanceOf(Expr\Comparison::class, $orParts[0]);
+        self::assertInstanceOf(Comparison::class, $orParts[0]);
         self::assertEquals('testFoo.bar', $orParts[0]->getLeftExpr());
         self::assertEquals('LIKE', $orParts[0]->getOperator());
         self::assertEquals(':searchTerm2', $orParts[0]->getRightExpr());
 
-        self::assertInstanceOf(Expr\Comparison::class, $orParts[1]);
+        self::assertInstanceOf(Comparison::class, $orParts[1]);
         self::assertEquals('testFoo.tmp', $orParts[1]->getLeftExpr());
         self::assertEquals('LIKE', $orParts[1]->getOperator());
         self::assertEquals(':searchTerm3', $orParts[1]->getRightExpr());
@@ -195,5 +198,58 @@ class SearchHelperTest extends TestCase
         $sut = new SearchHelper($configuration);
 
         $sut->addSearchTerm($qb, $query);
+    }
+
+    public static function provideMaliciousMetaFieldPayloads(): array
+    {
+        $exploitPayload = "metaNotExists1\tFROM\tApp\\Entity\\User\tmetaNotExists1\tWHERE\tmetaNotExists1.id=1)--";
+
+        return [
+            'dot and parenthesis characters' => ['x.y:~ x):""', ['x.y', 'x)']],
+            'tab and comment injection payloads' => [$exploitPayload . ':~ ' . $exploitPayload . ':""', ['metaNotExists1.id=1)--', 'metaNotExists1.id=1)--']],
+        ];
+    }
+
+    /**
+     * Regression test for GHSA-9cxw-hp3c-637x
+     */
+    #[DataProvider('provideMaliciousMetaFieldPayloads')]
+    public function testMaliciousMetaFieldNamesCannotInfluenceSubqueryDql(string $term, array $expectedMetaNames): void
+    {
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->method('getExpressionBuilder')->willReturn(new Expr());
+        $qb = new QueryBuilder($em);
+        $qb->from(Timesheet::class, 'testFoo');
+
+        $query = new BaseQuery();
+        $query->setSearchTerm(new SearchTerm($term));
+        $configuration = new SearchConfiguration(['bar'], 'MetaFieldClass', 'metaFieldName');
+        $configuration->setEntityFieldName('entityFieldName');
+
+        $sut = new SearchHelper($configuration);
+
+        $sut->addSearchTerm($qb, $query);
+
+        $wherePart = $qb->getDQLPart('where');
+        self::assertInstanceOf(Andx::class, $wherePart);
+        $where = (string) $wherePart;
+
+        self::assertStringContainsString('metaNotExists0', $where);
+        self::assertStringContainsString('metaNotExists1', $where);
+        self::assertStringNotContainsString('App\\Entity\\User', $where);
+        self::assertStringNotContainsString('--', $where);
+        self::assertStringNotContainsString("\tFROM\t", $where);
+
+        $metaNames = [];
+        /** @var Parameter $parameter */
+        foreach ($qb->getParameters() as $parameter) {
+            if (str_starts_with($parameter->getName(), 'metaName')) {
+                $metaNames[] = $parameter->getValue();
+            }
+        }
+
+        self::assertCount(2, $metaNames);
+        self::assertEquals($expectedMetaNames[0], $metaNames[0]);
+        self::assertEquals($expectedMetaNames[1], $metaNames[1]);
     }
 }

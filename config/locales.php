@@ -6,6 +6,20 @@
     'rtl' => true,
     'translation' => true,
   ],
+  'bg' => 
+  [
+    'date' => 'd.MM.y',
+    'time' => 'HH:mm',
+    'rtl' => false,
+    'translation' => true,
+  ],
+  'ca' => 
+  [
+    'date' => 'd/M/y',
+    'time' => 'HH:mm',
+    'rtl' => false,
+    'translation' => true,
+  ],
   'cs' => 
   [
     'date' => 'dd.MM.y',
@@ -267,7 +281,7 @@
   ],
   'en_CZ' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -293,6 +307,13 @@
     'rtl' => false,
     'translation' => false,
   ],
+  'en_EE' => 
+  [
+    'date' => 'dd/MM/y',
+    'time' => 'HH:mm',
+    'rtl' => false,
+    'translation' => false,
+  ],
   'en_ER' => 
   [
     'date' => 'dd/MM/y',
@@ -302,7 +323,7 @@
   ],
   'en_ES' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -337,7 +358,7 @@
   ],
   'en_FR' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -353,6 +374,13 @@
   [
     'date' => 'dd/MM/y',
     'time' => 'h:mm a',
+    'rtl' => false,
+    'translation' => false,
+  ],
+  'en_GE' => 
+  [
+    'date' => 'dd/MM/y',
+    'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
   ],
@@ -386,7 +414,7 @@
   ],
   'en_GS' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -414,7 +442,7 @@
   ],
   'en_HU' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -463,7 +491,7 @@
   ],
   'en_IT' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -479,6 +507,13 @@
   [
     'date' => 'dd/MM/y',
     'time' => 'h:mm a',
+    'rtl' => false,
+    'translation' => false,
+  ],
+  'en_JP' => 
+  [
+    'date' => 'y/MM/dd',
+    'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
   ],
@@ -528,6 +563,20 @@
   [
     'date' => 'dd/MM/y',
     'time' => 'h:mm a',
+    'rtl' => false,
+    'translation' => false,
+  ],
+  'en_LT' => 
+  [
+    'date' => 'dd/MM/y',
+    'time' => 'HH:mm',
+    'rtl' => false,
+    'translation' => false,
+  ],
+  'en_LV' => 
+  [
+    'date' => 'dd/MM/y',
+    'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
   ],
@@ -631,7 +680,7 @@
   ],
   'en_NO' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -680,7 +729,7 @@
   ],
   'en_PL' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -701,7 +750,7 @@
   ],
   'en_PT' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -715,7 +764,7 @@
   ],
   'en_RO' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -778,7 +827,7 @@
   ],
   'en_SK' => 
   [
-    'date' => 'M/d/y',
+    'date' => 'dd/MM/y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
@@ -847,6 +896,13 @@
     'translation' => false,
   ],
   'en_TZ' => 
+  [
+    'date' => 'dd/MM/y',
+    'time' => 'HH:mm',
+    'rtl' => false,
+    'translation' => false,
+  ],
+  'en_UA' => 
   [
     'date' => 'dd/MM/y',
     'time' => 'HH:mm',
@@ -1926,15 +1982,15 @@
   ],
   'sv_AX' => 
   [
-    'date' => 'y-MM-dd',
+    'date' => 'd.M.y',
     'time' => 'HH:mm',
     'rtl' => false,
     'translation' => false,
   ],
   'sv_FI' => 
   [
-    'date' => 'y-MM-dd',
-    'time' => 'HH:mm',
+    'date' => 'd.M.y',
+    'time' => 'HH.mm',
     'rtl' => false,
     'translation' => false,
   ],

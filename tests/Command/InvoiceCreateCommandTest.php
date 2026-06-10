@@ -13,7 +13,7 @@ use App\Command\InvoiceCreateCommand;
 use App\DataFixtures\UserFixtures;
 use App\Entity\Customer;
 use App\Entity\Project;
-use App\Invoice\ServiceInvoice;
+use App\Invoice\InvoiceService;
 use App\Repository\CustomerRepository;
 use App\Repository\InvoiceTemplateRepository;
 use App\Repository\ProjectRepository;
@@ -23,14 +23,14 @@ use App\Tests\DataFixtures\InvoiceTemplateFixtures;
 use App\Tests\DataFixtures\ProjectFixtures;
 use App\Tests\DataFixtures\TimesheetFixtures;
 use App\Tests\KernelTestTrait;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-/**
- * @covers \App\Command\InvoiceCreateCommand
- * @group integration
- */
+#[CoversClass(InvoiceCreateCommand::class)]
+#[Group('integration')]
 class InvoiceCreateCommandTest extends KernelTestCase
 {
     use KernelTestTrait;
@@ -67,7 +67,7 @@ class InvoiceCreateCommandTest extends KernelTestCase
         $container = self::getContainer();
 
         $this->application->add(new InvoiceCreateCommand(
-            $container->get(ServiceInvoice::class), // @phpstan-ignore argument.type
+            $container->get(InvoiceService::class), // @phpstan-ignore argument.type
             $container->get(CustomerRepository::class), // @phpstan-ignore argument.type
             $container->get(ProjectRepository::class), // @phpstan-ignore argument.type
             $container->get(InvoiceTemplateRepository::class), // @phpstan-ignore argument.type
@@ -193,7 +193,7 @@ class InvoiceCreateCommandTest extends KernelTestCase
 
         $fixture = new CustomerFixtures();
         $fixture->setAmount(1);
-        $fixture->setCallback(function (Customer $customer) use ($invoiceTemplate) {
+        $fixture->setCallback(function (Customer $customer) use ($invoiceTemplate): void {
             $customer->setInvoiceTemplate($invoiceTemplate[0]);
         });
         $customer = $this->importFixture($fixture)[0];

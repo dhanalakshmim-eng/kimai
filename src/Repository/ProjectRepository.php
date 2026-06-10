@@ -29,19 +29,18 @@ use DateTime;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityRepository;
-use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\Query\Expr\Andx;
 use Doctrine\ORM\QueryBuilder;
 
 /**
- * @extends \Doctrine\ORM\EntityRepository<Project>
+ * @extends EntityRepository<Project>
  */
 class ProjectRepository extends EntityRepository
 {
     /**
-     * @param int[] $projectIds
+     * @param array<int, string|int> $projectIds
      * @return array<Project>
      */
     public function findByIds(array $projectIds): array
@@ -415,7 +414,7 @@ class ProjectRepository extends EntityRepository
             $em->remove($delete);
             $em->flush();
             $em->commit();
-        } catch (ORMException $ex) {
+        } catch (\Exception $ex) {
             $em->rollback();
             throw $ex;
         }

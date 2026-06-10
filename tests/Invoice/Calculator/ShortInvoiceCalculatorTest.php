@@ -16,18 +16,19 @@ use App\Entity\Project;
 use App\Entity\Tag;
 use App\Entity\Timesheet;
 use App\Entity\User;
+use App\Invoice\Calculator\AbstractCalculator;
+use App\Invoice\Calculator\AbstractMergedCalculator;
 use App\Invoice\Calculator\ShortInvoiceCalculator;
 use App\Invoice\CalculatorInterface;
 use App\Invoice\InvoiceItem;
 use App\Repository\Query\InvoiceQuery;
 use App\Tests\Invoice\DebugFormatter;
 use App\Tests\Mocks\InvoiceModelFactoryFactory;
+use PHPUnit\Framework\Attributes\CoversClass;
 
-/**
- * @covers \App\Invoice\Calculator\ShortInvoiceCalculator
- * @covers \App\Invoice\Calculator\AbstractMergedCalculator
- * @covers \App\Invoice\Calculator\AbstractCalculator
- */
+#[CoversClass(ShortInvoiceCalculator::class)]
+#[CoversClass(AbstractMergedCalculator::class)]
+#[CoversClass(AbstractCalculator::class)]
 class ShortInvoiceCalculatorTest extends AbstractCalculatorTestCase
 {
     protected function getCalculator(): CalculatorInterface
@@ -93,11 +94,11 @@ class ShortInvoiceCalculatorTest extends AbstractCalculatorTestCase
         $sut->setModel($model);
 
         self::assertEquals('short', $sut->getId());
-        self::assertEquals(562.28, $sut->getTotal());
-        self::assertEquals(19, $sut->getVat());
+        self::assertEquals(561.87, $sut->getTotal());
+        $this->assertTax($sut, 19);
         self::assertEquals('EUR', $model->getCurrency());
-        self::assertEquals(472.5, $sut->getSubtotal());
-        self::assertEquals(5800, $sut->getTimeWorked());
+        self::assertEquals(472.16, $sut->getSubtotal());
+        self::assertEquals(5796, $sut->getTimeWorked());
         self::assertEquals(1, \count($sut->getEntries()));
 
         $entries = $sut->getEntries();
@@ -108,8 +109,8 @@ class ShortInvoiceCalculatorTest extends AbstractCalculatorTestCase
         self::assertEquals('', $result->getDescription());
         self::assertEquals(293.27, $result->getHourlyRate());
         self::assertNull($result->getFixedRate());
-        self::assertEquals(472.5, $result->getRate());
-        self::assertEquals(5800, $result->getDuration());
+        self::assertEquals(472.16, $result->getRate());
+        self::assertEquals(5796, $result->getDuration());
         self::assertEquals(3, $result->getAmount());
         self::assertEquals(['foo', 'bar', 'bar1'], $result->getTags());
     }
@@ -170,7 +171,7 @@ class ShortInvoiceCalculatorTest extends AbstractCalculatorTestCase
 
         self::assertEquals('short', $sut->getId());
         self::assertEquals(581.17, $sut->getTotal());
-        self::assertEquals(19, $sut->getVat());
+        $this->assertTax($sut, 19);
         self::assertEquals('EUR', $model->getCurrency());
         self::assertEquals(488.38, $sut->getSubtotal());
         self::assertEquals(5800, $sut->getTimeWorked());
@@ -240,7 +241,7 @@ class ShortInvoiceCalculatorTest extends AbstractCalculatorTestCase
 
         self::assertEquals('short', $sut->getId());
         self::assertEquals(581.17, $sut->getTotal());
-        self::assertEquals(19, $sut->getVat());
+        $this->assertTax($sut, 19);
         self::assertEquals('EUR', $model->getCurrency());
         self::assertEquals(488.38, $sut->getSubtotal());
         self::assertEquals(5800, $sut->getTimeWorked());

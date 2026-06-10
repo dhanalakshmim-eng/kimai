@@ -39,7 +39,7 @@ final class QuickEntryWeekType extends AbstractType
 
         $builder->add('project', ProjectType::class, $projectOptions);
 
-        $projectFunction = function (FormEvent $event) use ($projectOptions) {
+        $projectFunction = function (FormEvent $event) use ($projectOptions): void {
             /** @var QuickEntryModel|null $data */
             $data = $event->getData();
             if ($data === null || $data->getProject() === null) {
@@ -62,7 +62,7 @@ final class QuickEntryWeekType extends AbstractType
 
         $builder->add('activity', ActivityType::class, $activityOptions);
 
-        $activityFunction = function (FormEvent $event) use ($activityOptions) {
+        $activityFunction = function (FormEvent $event) use ($activityOptions): void {
             /** @var QuickEntryModel|null $data */
             $data = $event->getData();
             if ($data === null || $data->getActivity() === null) {
@@ -77,7 +77,7 @@ final class QuickEntryWeekType extends AbstractType
         $builder->addEventListener(FormEvents::PRE_SET_DATA, $activityFunction);
 
         // make sure to pre-fill the form, so non-global activities can be loaded for the select project
-        $activityPreSubmitFunction = function (FormEvent $event) use ($activityOptions) {
+        $activityPreSubmitFunction = function (FormEvent $event) use ($activityOptions): void {
             $data = $event->getData();
 
             if (\is_array($data)) {
@@ -90,7 +90,11 @@ final class QuickEntryWeekType extends AbstractType
                 }
             }
 
-            $event->getForm()->add('activity', ActivityType::class, $activityOptions);
+            // exported entries cause the dropdown to be deactivated
+            // we need to make sure to fetch the info before the field is replaced
+            // see https://github.com/kimai/kimai/issues/5642
+            $disabled = $event->getForm()->get('activity')->isDisabled();
+            $event->getForm()->add('activity', ActivityType::class, array_merge(['disabled' => $disabled], $activityOptions));
         };
         $builder->addEventListener(FormEvents::PRE_SUBMIT, $activityPreSubmitFunction);
 
@@ -113,7 +117,7 @@ final class QuickEntryWeekType extends AbstractType
             ],
         ]);
 
-        $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event) use ($options) {
+        $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event) use ($options): void {
             if ($event->getData() === null && $options['prototype_data'] instanceof QuickEntryModel) {
                 $event->setData(clone $options['prototype_data']);
             }
@@ -151,7 +155,7 @@ final class QuickEntryWeekType extends AbstractType
         // make sure that duration is mapped back to end field
         $builder->addEventListener(
             FormEvents::SUBMIT,
-            function (FormEvent $event) {
+            function (FormEvent $event): void {
                 /** @var QuickEntryModel $data */
                 $data = $event->getData();
                 $newRecords = $data->getNewTimesheet();

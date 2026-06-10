@@ -11,10 +11,9 @@ namespace App\Tests\API;
 
 use App\Entity\User;
 use App\Tests\Controller\AbstractControllerBaseTestCase;
+use PHPUnit\Framework\Attributes\Group;
 
-/**
- * @group integration
- */
+#[Group('integration')]
 class ApiDocControllerTest extends AbstractControllerBaseTestCase
 {
     public function testIsSecure(): void
@@ -33,6 +32,7 @@ class ApiDocControllerTest extends AbstractControllerBaseTestCase
         self::assertStringContainsString('const config = {"basePath":"/api/doc","router":"memory","logo":"/touch-icon-192x192.png","hideInternal":true};', $content);
         $results = preg_match('/docs\.apiDescriptionDocument\ \=\ (.*)\.spec;/', $content, $matches);
         self::assertNotFalse($results);
+        self::assertArrayHasKey(1, $matches);
         $swaggerJson = json_decode($matches[1], true);
         self::assertIsArray($swaggerJson);
         self::assertArrayHasKey('spec', $swaggerJson);
@@ -66,6 +66,7 @@ class ApiDocControllerTest extends AbstractControllerBaseTestCase
             '/api/activities/{id}/meta',
             '/api/activities/{id}/rates',
             '/api/activities/{id}/rates/{rateId}',
+            '/api/activities/{id}/team',
             '/api/config/timesheet',
             '/api/config/colors',
             '/api/customers',
@@ -73,14 +74,24 @@ class ApiDocControllerTest extends AbstractControllerBaseTestCase
             '/api/customers/{id}/meta',
             '/api/customers/{id}/rates',
             '/api/customers/{id}/rates/{rateId}',
+            '/api/customers/{id}/comments',
+            '/api/customers/{id}/comments/{comment}/pin',
+            '/api/customers/{id}/comments/{comment}',
+            '/api/customers/{id}/team',
             '/api/export/{id}',
             '/api/invoices',
             '/api/invoices/{id}',
+            '/api/invoices/{id}/custom-fields',
+            '/api/invoices/{id}/download',
             '/api/projects',
             '/api/projects/{id}',
             '/api/projects/{id}/meta',
             '/api/projects/{id}/rates',
             '/api/projects/{id}/rates/{rateId}',
+            '/api/projects/{id}/comments',
+            '/api/projects/{id}/comments/{comment}/pin',
+            '/api/projects/{id}/comments/{comment}',
+            '/api/projects/{id}/team',
             '/api/ping',
             '/api/version',
             '/api/plugins',
@@ -106,6 +117,7 @@ class ApiDocControllerTest extends AbstractControllerBaseTestCase
             '/api/users/{id}',
             '/api/users/me',
             '/api/users/api-token/{id}',
+            '/api/users/{id}/preferences',
         ];
 
         self::assertArrayHasKey('openapi', $json);

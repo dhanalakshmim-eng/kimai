@@ -53,13 +53,14 @@ class Activity implements EntityWithMetaFields, EntityWithBudget, CreatedAt
     #[ORM\ManyToOne(targetEntity: Project::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     #[Serializer\Expose]
-    #[Serializer\Groups(['Subresource', 'Expanded'])]
+    #[Serializer\Groups(['Expanded'])]
     #[OA\Property(ref: '#/components/schemas/ProjectExpanded')]
     private ?Project $project = null;
     /**
      * Name of this activity
      */
     #[ORM\Column(name: 'name', type: Types::STRING, length: 150, nullable: false)]
+    #[Constraints\NoSpecialCharacters]
     #[Assert\NotBlank]
     #[Assert\Length(min: 2, max: 150)]
     #[Serializer\Expose]
@@ -96,7 +97,7 @@ class Activity implements EntityWithMetaFields, EntityWithBudget, CreatedAt
      */
     #[ORM\OneToMany(mappedBy: 'activity', targetEntity: ActivityMeta::class, cascade: ['persist'])]
     #[Serializer\Expose]
-    #[Serializer\Groups(['Activity'])]
+    #[Serializer\Groups(['Default'])]
     #[Serializer\Type(name: 'array<App\Entity\ActivityMeta>')]
     #[Serializer\SerializedName('metaFields')]
     #[Serializer\Accessor(getter: 'getVisibleMetaFields')]
@@ -117,6 +118,7 @@ class Activity implements EntityWithMetaFields, EntityWithBudget, CreatedAt
     #[ORM\Column(name: 'invoice_text', type: Types::TEXT, nullable: true)]
     private ?string $invoiceText = null;
     #[ORM\Column(name: 'number', type: Types::STRING, length: 10, nullable: true)]
+    #[Constraints\NoSpecialCharacters]
     #[Assert\Length(max: 10)]
     #[Serializer\Expose]
     #[Serializer\Groups(['Default'])]

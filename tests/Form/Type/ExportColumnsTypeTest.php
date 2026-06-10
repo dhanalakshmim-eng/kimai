@@ -11,14 +11,15 @@ namespace App\Tests\Form\Type;
 
 use App\Form\Type\ExportColumnsType;
 use App\Tests\Mocks\MetaFieldColumnSubscriberMock;
+use App\Tests\Mocks\SystemConfigurationFactory;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Test\TypeTestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * @covers \App\Form\Type\ExportColumnsType
- */
+#[CoversClass(ExportColumnsType::class)]
 class ExportColumnsTypeTest extends TypeTestCase
 {
     public static function getTestData(): iterable
@@ -40,17 +41,18 @@ class ExportColumnsTypeTest extends TypeTestCase
         $dispatcher->addSubscriber(new MetaFieldColumnSubscriberMock());
 
         $translator = $this->createMock(TranslatorInterface::class);
+        $config = SystemConfigurationFactory::createStub();
 
         return [
-            new ExportColumnsType($dispatcher, $translator)
+            new ExportColumnsType($dispatcher, $translator, $config)
         ];
     }
 
     /**
      * @param array<mixed> $value
      * @param array<mixed> $expected
-     * @dataProvider getTestData
      */
+    #[DataProvider('getTestData')]
     public function testSubmitValidData(array $value, array $expected): void
     {
         $data = ['columns' => $value];

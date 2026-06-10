@@ -13,6 +13,11 @@ use App\Entity\ExportableItem;
 use App\Repository\Query\TimesheetQuery;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * FIXME change interface for 3.0
+ * @method string getType()
+ * @method bool isInternal()
+ */
 interface ExportRendererInterface
 {
     /**

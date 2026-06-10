@@ -32,7 +32,7 @@ final class DurationType extends AbstractType
             'preset_minutes' => null,
             'toggle' => false,
             'max_hours' => 24,
-            'icon' => 'clock',
+            'icon' => 'duration',
             'documentation' => [
                 'type' => 'string',
                 'description' => 'Duration - supports various formats: https://www.kimai.org/documentation/duration-format.html',
@@ -49,6 +49,7 @@ final class DurationType extends AbstractType
             $class .= ' ' . $view->vars['attr']['class'];
         }
         $view->vars['attr']['class'] = $class;
+        $view->vars['attr']['autocomplete'] = 'off';
         $view->vars['toggle'] = $options['toggle'];
 
         if ($options['preset_hours'] !== null && $options['preset_minutes'] !== null) {

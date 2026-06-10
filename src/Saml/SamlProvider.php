@@ -54,7 +54,7 @@ final class SamlProvider
         } catch (\Exception $ex) {
             $this->logger->error($ex->getMessage());
             throw new AuthenticationException(
-                \sprintf('Failed creating or hydrating user "%s": %s', $token->getUserIdentifier(), $ex->getMessage())
+                \sprintf('Failed creating or hydrating user "%s": %s', $token->getUserIdentifier() ?? '*unknown*', $ex->getMessage())
             );
         }
 
@@ -150,7 +150,7 @@ final class SamlProvider
         }
 
         if (!empty($results)) {
-            return implode(' ', $results);
+            return implode(' ', $results); // @phpstan-ignore argument.type
         }
 
         return null;

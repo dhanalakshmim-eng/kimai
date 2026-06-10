@@ -21,15 +21,15 @@ use App\Event\ActivityUpdatePreEvent;
 use App\Repository\ActivityRepository;
 use App\Tests\Mocks\SystemConfigurationFactory;
 use App\Validator\ValidationFailedException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-/**
- * @covers \App\Activity\ActivityService
- */
+#[CoversClass(ActivityService::class)]
 class ActivityServiceTest extends TestCase
 {
     private function getSut(
@@ -144,15 +144,28 @@ class ActivityServiceTest extends TestCase
         self::assertNull($project->getProject());
     }
 
-    /**
-     * @dataProvider getTestData
-     */
+    #[DataProvider('getTestData')]
     public function testActivityNumber(string $format, int|string $expected): void
     {
         $sut = $this->getSut(null, null, null, ['number_format' => $format]);
         $activity = $sut->createNewActivity();
 
         self::assertEquals((string) $expected, $activity->getNumber());
+    }
+
+    public function testActivityNumberIncrementsForMultipleCreateCallsOnSameInstance(): void
+    {
+        $sut = $this->getSut(null, null, null, ['number_format' => '{ac,1}']);
+
+        $activity1 = $sut->createNewActivity();
+        $activity2 = $sut->createNewActivity();
+        $activity3 = $sut->createNewActivity();
+
+        // countActivity() is mocked and returns 0, the formatter normalizes increaseBy=0 to 1,
+        // so the first generated number is 2. The in-instance counter must bump subsequent calls.
+        self::assertEquals('2', $activity1->getNumber());
+        self::assertEquals('3', $activity2->getNumber());
+        self::assertEquals('4', $activity3->getNumber());
     }
 
     /**

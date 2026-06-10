@@ -82,22 +82,22 @@ final class TimesheetController extends BaseApiController
     #[Rest\QueryParam(name: 'activity', requirements: '\d+', strict: true, nullable: true, description: 'Activity ID to filter timesheets')]
     #[Rest\QueryParam(name: 'activities', map: true, requirements: '\d+', strict: true, nullable: true, default: [], description: 'List of activity IDs to filter, e.g.: activities[]=1&activities[]=2')]
     #[Rest\QueryParam(name: 'page', requirements: '\d+', strict: true, nullable: true, description: 'The page to display, renders a 404 if not found (default: 1)')]
-    #[Rest\QueryParam(name: 'size', requirements: '\d+', strict: true, nullable: true, description: 'The amount of entries for each page (default: 50)')]
+    #[Rest\QueryParam(name: 'size', requirements: '\d+', strict: true, nullable: true, description: 'The amount of entries for each page (default: 50, max: 500)')]
     #[Rest\QueryParam(name: 'tags', map: true, strict: true, nullable: true, default: [], description: 'List of tag names, e.g. tags[]=bar&tags[]=foo')]
     #[Rest\QueryParam(name: 'orderBy', requirements: 'id|begin|end|rate', strict: true, nullable: true, description: 'The field by which results will be ordered. Allowed values: id, begin, end, rate (default: begin)')]
     #[Rest\QueryParam(name: 'order', requirements: 'ASC|DESC', strict: true, nullable: true, description: 'The result order. Allowed values: ASC, DESC (default: DESC)')]
-    #[Rest\QueryParam(name: 'begin', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Only records after this date will be included (format: HTML5 datetime-local, e.g. YYYY-MM-DDThh:mm:ss)')]
-    #[Rest\QueryParam(name: 'end', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Only records before this date will be included (format: HTML5 datetime-local, e.g. YYYY-MM-DDThh:mm:ss)')]
+    #[Rest\QueryParam(name: 'begin', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Only records started at or after this date-time will be included (format: HTML5 datetime-local, e.g. YYYY-MM-DDThh:mm:ss)')]
+    #[Rest\QueryParam(name: 'end', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Only records started at or before this date-time will be included (format: HTML5 datetime-local, e.g. YYYY-MM-DDThh:mm:ss)')]
     #[Rest\QueryParam(name: 'exported', requirements: '0|1', strict: true, nullable: true, description: 'Use this flag if you want to filter for export state. Allowed values: 0=not exported, 1=exported (default: all)')]
     #[Rest\QueryParam(name: 'active', requirements: '0|1', strict: true, nullable: true, description: 'Filter for running/active records. Allowed values: 0=stopped, 1=active (default: all)')]
     #[Rest\QueryParam(name: 'billable', requirements: '0|1', strict: true, nullable: true, description: 'Filter for non-/billable records. Allowed values: 0=non-billable, 1=billable (default: all)')]
     #[Rest\QueryParam(name: 'full', requirements: '0|1|true|false', strict: true, nullable: true, description: 'Allows to fetch full objects including subresources. Allowed values: 0|1|false|true (default: false)')]
-    #[Rest\QueryParam(name: 'term', description: 'Free search term')]
-    #[Rest\QueryParam(name: 'modified_after', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Only records changed after this date will be included (format: HTML5 datetime-local, e.g. YYYY-MM-DDThh:mm:ss)')]
+    #[Rest\QueryParam(name: 'term', description: 'Free search term', nullable: true)]
+    #[Rest\QueryParam(name: 'modified_after', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Only records changed after this date will be included. You need to pass in a UTC date-time, as this field is stored in UTC (format: HTML5 datetime-local, e.g. YYYY-MM-DDThh:mm:ss)')]
     public function cgetAction(ParamFetcherInterface $paramFetcher, CustomerRepository $customerRepository, ProjectRepository $projectRepository, ActivityRepository $activityRepository, UserRepository $userRepository): Response
     {
         $query = new TimesheetQuery(false);
-        $query->setCurrentUser($this->getUser());
+        $this->prepareQuery($query, $paramFetcher);
         $seeAll = false;
 
         if ($this->isGranted('view_other_timesheet')) {
@@ -113,6 +113,9 @@ final class TimesheetController extends BaseApiController
 
             if (!$seeAll) {
                 foreach ($userRepository->findByIds($users) as $user) {
+                    if (!$this->isGranted('access_user', $user)) {
+                        throw $this->createAccessDeniedException('Cannot access user: ' . $user->getId());
+                    }
                     $query->addUser($user);
                 }
             }
@@ -126,57 +129,44 @@ final class TimesheetController extends BaseApiController
 
         /** @var array<int> $customers */
         $customers = $paramFetcher->get('customers');
-        $customer = $paramFetcher->get('customer');
-        if (\is_string($customer) && $customer !== '') {
-            $customers[] = $customer;
+        $cu = $paramFetcher->get('customer');
+        if (\is_string($cu) && $cu !== '') {
+            $customers[] = $cu;
         }
 
-        foreach (array_unique($customers) as $customerId) {
-            $customer = $customerRepository->find($customerId);
-            if ($customer === null) {
-                throw $this->createNotFoundException('Unknown customer: ' . $customerId);
+        foreach ($customerRepository->findByIds(array_unique($customers)) as $customer) {
+            if (!$this->isGranted('access', $customer)) {
+                throw $this->createAccessDeniedException('Cannot access Customer: ' . $customer->getId());
             }
             $query->addCustomer($customer);
         }
 
         /** @var array<int> $projects */
         $projects = $paramFetcher->get('projects');
-        $project = $paramFetcher->get('project');
-        if (\is_string($project) && $project !== '') {
-            $projects[] = $project;
+        $pr = $paramFetcher->get('project');
+        if (\is_string($pr) && $pr !== '') {
+            $projects[] = $pr;
         }
 
-        foreach (array_unique($projects) as $projectId) {
-            $project = $projectRepository->find($projectId);
-            if ($project === null) {
-                throw $this->createNotFoundException('Unknown project: ' . $project);
+        foreach ($projectRepository->findByIds(array_unique($projects)) as $project) {
+            if (!$this->isGranted('access', $project)) {
+                throw $this->createAccessDeniedException('Cannot access Project: ' . $project->getId());
             }
             $query->addProject($project);
         }
 
         /** @var array<int> $activities */
         $activities = $paramFetcher->get('activities');
-        $activity = $paramFetcher->get('activity');
-        if (\is_string($activity) && $activity !== '') {
-            $activities[] = $activity;
+        $ac = $paramFetcher->get('activity');
+        if (\is_string($ac) && $ac !== '') {
+            $activities[] = $ac;
         }
 
-        foreach (array_unique($activities) as $activityId) {
-            $activity = $activityRepository->find($activityId);
-            if ($activity === null) {
-                throw $this->createNotFoundException('Unknown activity: ' . $activity);
+        foreach ($activityRepository->findByIds(array_unique($activities)) as $activity) {
+            if (!$this->isGranted('access', $activity)) {
+                throw $this->createAccessDeniedException('Cannot access Activity: ' . $activity->getId());
             }
             $query->addActivity($activity);
-        }
-
-        $page = $paramFetcher->get('page');
-        if (\is_string($page) && $page !== '') {
-            $query->setPage((int) $page);
-        }
-
-        $size = $paramFetcher->get('size');
-        if (\is_string($size) && $size !== '') {
-            $query->setPageSize((int) $size);
         }
 
         /** @var array<string> $tags */
@@ -189,16 +179,6 @@ final class TimesheetController extends BaseApiController
             foreach ($tagsByName as $tag) {
                 $query->addTag($tag);
             }
-        }
-
-        $order = $paramFetcher->get('order');
-        if (\is_string($order) && $order !== '') {
-            $query->setOrder($order);
-        }
-
-        $orderBy = $paramFetcher->get('orderBy');
-        if (\is_string($orderBy) && $orderBy !== '') {
-            $query->setOrderBy($orderBy);
         }
 
         $factory = $this->getDateTimeFactory();
@@ -248,16 +228,13 @@ final class TimesheetController extends BaseApiController
             $query->setSearchTerm(new SearchTerm($term));
         }
 
-        if (!empty($modifiedAfter = $paramFetcher->get('modified_after'))) {
-            $query->setModifiedAfter($factory->createDateTime($modifiedAfter));
+        $modifiedAfter = $paramFetcher->get('modified_after');
+        if (\is_string($modifiedAfter)) {
+            $query->setModifiedAfter(new \DateTimeImmutable($modifiedAfter, new \DateTimeZone('UTC')));
         }
 
-        $query->setIsApiCall(true);
         $data = $this->repository->getPagerfantaForQuery($query);
-        $results = (array) $data->getCurrentPageResults();
-
-        $view = new View($results, 200);
-        $this->addPagination($view, $data);
+        $view = new View($data, 200);
 
         $full = $paramFetcher->get('full');
         if ($full === '1' || $full === 'true') {
@@ -402,7 +379,7 @@ final class TimesheetController extends BaseApiController
     #[IsGranted('view_own_timesheet')]
     #[OA\Response(response: 200, description: 'Returns a collection of recent user activities (always the latest entry of a unique working set grouped by customer, project and activity)', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/TimesheetCollectionExpanded')))]
     #[Route(methods: ['GET'], path: '/recent', name: 'recent_timesheet')]
-    #[Rest\QueryParam(name: 'begin', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Only records after this date will be included. Default: today - 1 year (format: HTML5 datetime-local, e.g. YYYY-MM-DDThh:mm:ss)')]
+    #[Rest\QueryParam(name: 'begin', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Only records started at or after this date will be included. Default: today - 1 year (format: HTML5 datetime-local, e.g. YYYY-MM-DDThh:mm:ss)')]
     #[Rest\QueryParam(name: 'size', requirements: '\d+', strict: true, nullable: true, description: 'The amount of entries (default: 10)')]
     public function recentAction(ParamFetcherInterface $paramFetcher): Response
     {
@@ -415,7 +392,8 @@ final class TimesheetController extends BaseApiController
             $limit = (int) $reqLimit;
         }
 
-        if (null !== ($reqBegin = $paramFetcher->get('begin'))) {
+        $reqBegin = $paramFetcher->get('begin');
+        if (\is_string($reqBegin)) {
             $begin = $this->getDateTimeFactory($user)->createDateTime($reqBegin);
         }
 
@@ -451,16 +429,11 @@ final class TimesheetController extends BaseApiController
 
     /**
      * Stop active timesheet
-     *
-     * This route is available via GET and PATCH, as users over and over again run into errors when stopping.
-     * Likely caused by a slow JS engine and a fast-click after page reload.
      */
     #[IsGranted('stop', 'timesheet')]
     #[OA\Response(response: 200, description: 'Stops an active timesheet and returns it afterwards.', content: new OA\JsonContent(ref: '#/components/schemas/TimesheetEntity'))]
     #[OA\Parameter(name: 'id', in: 'path', description: 'Timesheet ID to stop', required: true)]
-    #[Route(methods: ['GET'], path: '/{id}/stop', name: 'stop_timesheet_get', requirements: ['id' => '\d+'])]
     #[Route(methods: ['PATCH'], path: '/{id}/stop', name: 'stop_timesheet', requirements: ['id' => '\d+'])]
-    #[OA\Get(x: ['internal' => true])]
     public function stopAction(Timesheet $timesheet): Response
     {
         $this->service->stopTimesheet($timesheet);
@@ -479,8 +452,6 @@ final class TimesheetController extends BaseApiController
     #[IsGranted('start', 'timesheet')]
     #[OA\Response(response: 200, description: 'Restart a timesheet for the same customer, project, activity combination. The current user will be the owner of the new record. Kimai tries to stop running records, which is expected to fail depending on the configured rules. Data will be copied from the original record if requested.', content: new OA\JsonContent(ref: '#/components/schemas/TimesheetEntity'))]
     #[OA\Parameter(name: 'id', in: 'path', description: 'Timesheet ID to restart', required: true)]
-    #[OA\Get(x: ['internal' => true])]
-    #[Route(methods: ['GET'], path: '/{id}/restart', name: 'restart_timesheet_get', requirements: ['id' => '\d+'])]
     #[Route(methods: ['PATCH'], path: '/{id}/restart', name: 'restart_timesheet', requirements: ['id' => '\d+'])]
     #[Rest\RequestParam(name: 'copy', requirements: 'all', strict: true, nullable: true, description: 'Whether data should be copied to the new entry. Allowed values: all (default: nothing is copied)')]
     #[Rest\RequestParam(name: 'begin', requirements: [new Constraints\DateTime(format: 'Y-m-d\TH:i:s')], strict: true, nullable: true, description: 'Changes the restart date to the given one (default: now)')]
@@ -494,7 +465,8 @@ final class TimesheetController extends BaseApiController
         $factory = $this->getDateTimeFactory();
 
         $begin = $factory->createDateTime();
-        if (null !== ($beginTmp = $paramFetcher->get('begin'))) {
+        $beginTmp = $paramFetcher->get('begin');
+        if (\is_string($beginTmp)) {
             $begin = $factory->createDateTime($beginTmp);
         }
 
@@ -506,8 +478,7 @@ final class TimesheetController extends BaseApiController
 
         $copy = $paramFetcher->get('copy');
         if ($copy === 'all') {
-            $copyTimesheet->setHourlyRate($timesheet->getHourlyRate());
-            $copyTimesheet->setFixedRate($timesheet->getFixedRate());
+            // we do NOT copy rates, as those should always be calculated from the configured settings
             $copyTimesheet->setDescription($timesheet->getDescription());
             $copyTimesheet->setBillable($timesheet->isBillable());
 

@@ -43,12 +43,15 @@ final class SearchHelper
 
         $rootAlias = $aliases[0];
         $searchAnd = $qb->expr()->andX();
+        $metaFieldClass = $this->configuration->getMetaFieldClass();
+        $metaFieldName = $this->configuration->getMetaFieldName();
 
-        if ($this->supportsMetaFields()) {
+        if ($metaFieldClass !== null && $metaFieldName !== null && $this->supportsMetaFields()) {
             $metaFieldRef = $rootAlias . '.' . $this->configuration->getEntityFieldName();
             $i = 0;
             $c = 0;
             $j = 0;
+            $k = 0;
             foreach ($searchTerm->getParts() as $part) {
                 // we do NOT search for unspecific/global terms as of now, because it is not clear if the user wants that
                 if (($metaName = $part->getField()) === null) {
@@ -59,7 +62,7 @@ final class SearchHelper
                 $metaValue = $part->getTerm();
                 $paramName = 'metaName' . $i++;
                 $paramValue = 'metaValue' . $c++;
-                $subqueryName = 'metaNotExists' . $metaName;
+                $subqueryName = 'metaNotExists' . $k++;
                 $field = $alias . '.value';
 
                 $and = $qb->expr()->andX();
@@ -69,7 +72,7 @@ final class SearchHelper
                     $and->add($qb->expr()->isNotNull($field));
                 } elseif ($metaValue === '~') {
                     $and->add(
-                        \sprintf('NOT EXISTS(SELECT %s FROM %s %s WHERE %s.%s = %s.id AND %s.name = :%s)', $subqueryName, $this->configuration->getMetaFieldClass(), $subqueryName, $subqueryName, $this->configuration->getMetaFieldName(), $rootAlias, $subqueryName, $paramName)
+                        \sprintf('NOT EXISTS(SELECT %s FROM %s %s WHERE %s.%s = %s.id AND %s.name = :%s)', $subqueryName, $metaFieldClass, $subqueryName, $subqueryName, $metaFieldName, $rootAlias, $subqueryName, $paramName)
                     );
                 } elseif ($metaValue === '') {
                     $and->add(
@@ -78,7 +81,7 @@ final class SearchHelper
                                 $qb->expr()->eq($alias . '.name', ':' . $paramName),
                                 $qb->expr()->isNull($field)
                             ),
-                            \sprintf('NOT EXISTS(SELECT %s FROM %s %s WHERE %s.%s = %s.id AND %s.name = :%s)', $subqueryName, $this->configuration->getMetaFieldClass(), $subqueryName, $subqueryName, $this->configuration->getMetaFieldName(), $rootAlias, $subqueryName, $paramName)
+                            \sprintf('NOT EXISTS(SELECT %s FROM %s %s WHERE %s.%s = %s.id AND %s.name = :%s)', $subqueryName, $metaFieldClass, $subqueryName, $subqueryName, $metaFieldName, $rootAlias, $subqueryName, $paramName)
                         )
                     );
                 } else {

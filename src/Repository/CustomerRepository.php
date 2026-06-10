@@ -26,7 +26,6 @@ use App\Repository\Search\SearchHelper;
 use App\Utils\Pagination;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\ORM\EntityRepository;
-use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\Query\Expr\Andx;
@@ -38,7 +37,7 @@ use Doctrine\ORM\QueryBuilder;
 class CustomerRepository extends EntityRepository
 {
     /**
-     * @param int[] $customerIDs
+     * @param array<int, string|int> $customerIDs
      * @return array<Customer>
      */
     public function findByIds(array $customerIDs): array
@@ -335,7 +334,7 @@ class CustomerRepository extends EntityRepository
             $em->remove($delete);
             $em->flush();
             $em->commit();
-        } catch (ORMException $ex) {
+        } catch (\Exception $ex) {
             $em->rollback();
             throw $ex;
         }

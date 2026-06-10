@@ -12,16 +12,15 @@ namespace App\Tests\Configuration;
 use App\Configuration\SystemConfiguration;
 use App\Entity\Configuration;
 use App\Tests\Mocks\SystemConfigurationFactory;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers \App\Configuration\SystemConfiguration
- */
+#[CoversClass(SystemConfiguration::class)]
 class SystemConfigurationTest extends TestCase
 {
     /**
-     * @param array $settings
-     * @param array $loaderSettings
+     * @param array<string, array<mixed>> $settings
+     * @param array<Configuration> $loaderSettings
      * @return SystemConfiguration
      */
     protected function getSut(array $settings, array $loaderSettings = []): SystemConfiguration
@@ -106,6 +105,9 @@ class SystemConfigurationTest extends TestCase
                     'company' => 'Acme Corp.',
                 ],
             ],
+            'user' => [
+                    'wizard' => true,
+            ],
         ];
     }
 
@@ -126,6 +128,7 @@ class SystemConfigurationTest extends TestCase
             (new Configuration())->setName('timesheet.markdown_content')->setValue('1'),
             (new Configuration())->setName('timesheet.default_begin')->setValue('07:00'),
             (new Configuration())->setName('timesheet.active_entries.hard_limit')->setValue('7'),
+            (new Configuration())->setName('user.wizard')->setValue(false),
         ];
     }
 
@@ -208,12 +211,11 @@ class SystemConfigurationTest extends TestCase
     {
         $sut = $this->getSut($this->getDefaultSettings(), []);
         self::assertEquals('Europe/London', $sut->getCustomerDefaultTimezone());
-        self::assertEquals('GBP', $sut->getCustomerDefaultCurrency());
+        self::assertEquals('GBP', $sut->getDefaultCurrency());
         self::assertEquals('FR', $sut->getCustomerDefaultCountry());
         self::assertEquals('foo/bar', $sut->getUserDefaultTimezone());
         self::assertEquals('blue', $sut->getUserDefaultTheme());
         self::assertEquals('IT', $sut->getUserDefaultLanguage());
-        self::assertEquals('USD', $sut->getUserDefaultCurrency());
         self::assertNull($sut->getFinancialYearStart());
     }
 
@@ -221,12 +223,23 @@ class SystemConfigurationTest extends TestCase
     {
         $sut = $this->getSut($this->getDefaultSettings(), $this->getDefaultLoaderSettings());
         self::assertEquals('Russia/Moscov', $sut->getCustomerDefaultTimezone());
-        self::assertEquals('RUB', $sut->getCustomerDefaultCurrency());
+        self::assertEquals('RUB', $sut->getDefaultCurrency());
         self::assertEquals('FR', $sut->getCustomerDefaultCountry());
         self::assertEquals('foo/bar', $sut->getUserDefaultTimezone());
         self::assertEquals('blue', $sut->getUserDefaultTheme());
         self::assertEquals('IT', $sut->getUserDefaultLanguage());
-        self::assertEquals('USD', $sut->getUserDefaultCurrency());
+    }
+
+    public function testUserWizardWithoutLoader(): void
+    {
+        $sut = $this->getSut($this->getDefaultSettings(), []);
+        self::assertTrue($sut->isUserWizardActive());
+    }
+
+    public function testUserWizardWithLoader(): void
+    {
+        $sut = $this->getSut($this->getDefaultSettings(), $this->getDefaultLoaderSettings());
+        self::assertFalse($sut->isUserWizardActive());
     }
 
     public function testTimesheetWithoutLoader(): void

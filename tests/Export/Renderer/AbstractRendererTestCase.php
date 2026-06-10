@@ -26,7 +26,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 abstract class AbstractRendererTestCase extends KernelTestCase
 {
-    protected function render(ExportRendererInterface $renderer): Response
+    protected function render(ExportRendererInterface $renderer, bool $exportDecimal = false): Response
     {
         $customer = new Customer('Customer Name');
         $customer->setNumber('A-0123456789');
@@ -129,11 +129,16 @@ abstract class AbstractRendererTestCase extends KernelTestCase
 
         $entries = [$timesheet, $timesheet2, $timesheet3, $timesheet4, $timesheet5, $timesheet6];
 
+        $currentUser = new User();
+        $currentUser->setPreferenceValue('export_decimal', $exportDecimal);
+        $currentUser->setUserIdentifier('foo-bar');
+
         $query = new TimesheetQuery();
         $query->setActivities([$activity]);
         $query->setBegin(new \DateTime());
         $query->setEnd(new \DateTime());
         $query->setProjects([$project]);
+        $query->setCurrentUser($currentUser);
 
         return $renderer->render($entries, $query);
     }

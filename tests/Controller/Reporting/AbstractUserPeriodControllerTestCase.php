@@ -12,11 +12,11 @@ namespace App\Tests\Controller\Reporting;
 use App\Entity\User;
 use App\Tests\Controller\AbstractControllerBaseTestCase;
 use App\Tests\DataFixtures\TimesheetFixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
-/**
- * @group integration
- */
+#[Group('integration')]
 abstract class AbstractUserPeriodControllerTestCase extends AbstractControllerBaseTestCase
 {
     protected function importReportingFixture(string $role): void
@@ -49,24 +49,20 @@ abstract class AbstractUserPeriodControllerTestCase extends AbstractControllerBa
         ];
     }
 
-    /**
-     * @dataProvider getTestData
-     */
+    #[DataProvider('getTestData')]
     public function testUserPeriodReport(int $user, string $dataType, string $title): void
     {
         $client = $this->getClientForAuthenticatedUser(User::ROLE_SUPER_ADMIN);
         $this->importReportingFixture(User::ROLE_SUPER_ADMIN);
         $this->assertAccessIsGranted($client, \sprintf('%s?user=%s&date=12999119191&sumType=%s', $this->getReportUrl(), $user, $dataType));
-        self::assertStringContainsString(\sprintf('<div class="card-body %s', $this->getBoxId()), $client->getResponse()->getContent());
+        self::assertStringContainsString(\sprintf('<div class="card-body p-0 %s', $this->getBoxId()), $client->getResponse()->getContent());
         $option = $client->getCrawler()->filterXPath("//select[@id='user']/option[@selected]");
         self::assertEquals($user, $option->attr('value'));
         $cell = $client->getCrawler()->filterXPath("//th[contains(@class, 'reportDataTypeTitle')]");
         self::assertEquals($title, $cell->text());
     }
 
-    /**
-     * @dataProvider getTestData
-     */
+    #[DataProvider('getTestData')]
     public function testUserPeriodReportExport(int $user, string $dataType, string $title): void
     {
         $client = $this->getClientForAuthenticatedUser(User::ROLE_SUPER_ADMIN);
@@ -94,7 +90,7 @@ abstract class AbstractUserPeriodControllerTestCase extends AbstractControllerBa
         $client = $this->getClientForAuthenticatedUser(User::ROLE_USER);
         $this->importReportingFixture(User::ROLE_USER);
         $this->assertAccessIsGranted($client, \sprintf('%s?date=12999119191', $this->getReportUrl()));
-        self::assertStringContainsString(\sprintf('<div class="card-body %s', $this->getBoxId()), $client->getResponse()->getContent());
+        self::assertStringContainsString(\sprintf('<div class="card-body p-0 %s', $this->getBoxId()), $client->getResponse()->getContent());
         $select = $client->getCrawler()->filterXPath("//select[@id='user']");
         self::assertEquals(0, $select->count());
         $cell = $client->getCrawler()->filterXPath("//th[contains(@class, 'reportDataTypeTitle')]");

@@ -9,6 +9,7 @@
 
 namespace App\Controller;
 
+use App\Configuration\SystemConfiguration;
 use App\Entity\ExportableItem;
 use App\Entity\ExportTemplate;
 use App\Export\Base\DispositionInlineInterface;
@@ -84,13 +85,21 @@ final class ExportController extends AbstractController
 
         $buttons = [];
         foreach ($this->export->getRenderer() as $renderer) {
-            $class = \get_class($renderer);
-            $pos = strrpos($class, '\\');
-            if ($pos !== false) {
-                $class = substr($class, $pos + 1);
+            if (method_exists($renderer, 'getType')) {
+                $class = $renderer->getType();
+            } else {
+                // TODO remove me with 3.0
+                $class = \get_class($renderer);
+                $pos = strrpos($class, '\\');
+                if ($pos !== false) {
+                    $class = substr($class, $pos + 1);
+                }
+                $class = strtolower(str_replace('Renderer', '', $class));
             }
-            $class = strtolower(str_replace('Renderer', '', $class));
-            $buttons[$class][$renderer->getId()] = $renderer->getTitle();
+            $buttons[$class][$renderer->getId()] = [
+                'title' => $renderer->getTitle(),
+                'internal' => method_exists($renderer, 'isInternal') ? $renderer->isInternal() : false,
+            ];
         }
 
         if ($this->isGranted('view_other_timesheet')) {
@@ -114,7 +123,7 @@ final class ExportController extends AbstractController
     }
 
     #[Route(path: '/data', name: 'export_data', methods: ['POST'])]
-    public function export(Request $request): Response
+    public function export(Request $request, SystemConfiguration $systemConfiguration): Response
     {
         $query = $this->getDefaultQuery();
 
@@ -132,6 +141,9 @@ final class ExportController extends AbstractController
             throw $this->createNotFoundException('Unknown export renderer');
         }
 
+        $oldMaxExecTime = \ini_get('max_execution_time');
+        ini_set('max_execution_time', $systemConfiguration->getExportTimeout());
+
         // display file inline if supported and `markAsExported` is not set
         if ($renderer instanceof DispositionInlineInterface && !$query->isMarkAsExported()) {
             $renderer->setDispositionInline(true);
@@ -143,6 +155,8 @@ final class ExportController extends AbstractController
         if ($query->isMarkAsExported()) {
             $this->export->setExported($entries);
         }
+
+        ini_set('max_execution_time', $oldMaxExecTime);
 
         return $response;
     }
@@ -194,12 +208,14 @@ final class ExportController extends AbstractController
     }
 
     #[Route(path: '/template-create', name: 'export_template_create', methods: ['GET', 'POST'])]
+    #[IsGranted('create_export_template')]
     public function createExportTemplate(Request $request, ExportTemplateRepository $repository): Response
     {
         return $this->editExportForm($this->generateUrl('export_template_create'), $request, $repository, new ExportTemplate());
     }
 
     #[Route(path: '/template-edit/{exportTemplate}', name: 'export_template_edit', methods: ['GET', 'POST'])]
+    #[IsGranted('create_export_template')]
     public function editExportTemplate(ExportTemplate $exportTemplate, Request $request, ExportTemplateRepository $repository): Response
     {
         return $this->editExportForm($this->generateUrl('export_template_edit', ['exportTemplate' => $exportTemplate->getId()]), $request, $repository, $exportTemplate);
@@ -225,7 +241,8 @@ final class ExportController extends AbstractController
         }
 
         return $this->render('export/template.html.twig', [
-            'form' => $form->createView()
+            'form' => $form->createView(),
+            'template' => $exportTemplate,
         ]);
     }
 }

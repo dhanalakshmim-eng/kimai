@@ -60,7 +60,7 @@
       </trans-unit>
       <trans-unit id="BYy.c1V" resname="calendar.slot_duration" approved="yes">
         <source>calendar.slot_duration</source>
-        <target state="final">Durata slot per la vista settimanale e giornaliera (hh:mm:ss)</target>
+        <target state="final">Durata slot per la vista settimanale e giornaliera</target>
       </trans-unit>
       <trans-unit id="nwuLBP4" resname="branding" approved="yes">
         <source>branding</source>
@@ -309,6 +309,14 @@
       <trans-unit id="jj1NmKW" resname="allow_duplicate_number" xml:space="preserve" approved="yes">
         <source>allow_duplicate_number</source>
         <target state="final">Consenti più utilizzi dello stesso numero</target>
+      </trans-unit>
+      <trans-unit id="6AaVxB2" resname="invoice.rounding_mode" approved="yes" xml:space="preserve">
+        <source>invoice.rounding_mode</source>
+        <target state="final">Modalità di arrotondamento</target>
+      </trans-unit>
+      <trans-unit id="uf2_qIW" resname="user_auth_wizard" xml:space="preserve" approved="yes">
+        <source>user_auth_wizard</source>
+        <target state="final">Mostra la procedura guidata di configurazione per i nuovi utenti</target>
       </trans-unit>
     </body>
   </file>

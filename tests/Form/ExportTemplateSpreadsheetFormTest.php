@@ -14,14 +14,14 @@ use App\Entity\ExportTemplate;
 use App\Form\ExportTemplateSpreadsheetForm;
 use App\Form\Type\ExportColumnsType;
 use App\Form\Type\LanguageType;
+use App\Tests\Mocks\SystemConfigurationFactory;
+use PHPUnit\Framework\Attributes\CoversClass;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\Form\Test\TypeTestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * @covers \App\Form\ExportTemplateSpreadsheetForm
- */
+#[CoversClass(ExportTemplateSpreadsheetForm::class)]
 class ExportTemplateSpreadsheetFormTest extends TypeTestCase
 {
     /**
@@ -31,9 +31,10 @@ class ExportTemplateSpreadsheetFormTest extends TypeTestCase
     {
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $translator = $this->createMock(TranslatorInterface::class);
+        $config = SystemConfigurationFactory::createStub();
 
         return [
-            new ExportColumnsType($dispatcher, $translator),
+            new ExportColumnsType($dispatcher, $translator, $config),
             new LanguageType(new LocaleService([]))
         ];
     }

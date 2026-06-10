@@ -28,6 +28,8 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 final class CustomerService
 {
+    private int $generatedNumbers = 0;
+
     public function __construct(
         private readonly CustomerRepository $repository,
         private readonly SystemConfiguration $configuration,
@@ -45,15 +47,20 @@ final class CustomerService
         return $timezone;
     }
 
+    public function loadMetaFields(Customer $customer): void
+    {
+        $this->dispatcher->dispatch(new CustomerMetaDefinitionEvent($customer));
+    }
+
     public function createNewCustomer(string $name): Customer
     {
         $customer = new Customer($name);
         $customer->setTimezone($this->getDefaultTimezone());
         $customer->setCountry($this->configuration->getCustomerDefaultCountry());
-        $customer->setCurrency($this->configuration->getCustomerDefaultCurrency());
+        $customer->setCurrency($this->configuration->getDefaultCurrency());
         $customer->setNumber($this->calculateNextCustomerNumber());
 
-        $this->dispatcher->dispatch(new CustomerMetaDefinitionEvent($customer));
+        $this->loadMetaFields($customer);
         $this->dispatcher->dispatch(new CustomerCreateEvent($customer));
 
         return $customer;
@@ -86,10 +93,10 @@ final class CustomerService
         return $customer;
     }
 
-    public function deleteCustomer(Customer $customer): void
+    public function deleteCustomer(Customer $customer, ?Customer $replace = null): void
     {
-        $this->dispatcher->dispatch(new CustomerDeleteEvent($customer));
-        $this->repository->deleteCustomer($customer);
+        $this->dispatcher->dispatch(new CustomerDeleteEvent($customer, $replace));
+        $this->repository->deleteCustomer($customer, $replace);
     }
 
     /**
@@ -150,7 +157,8 @@ final class CustomerService
         }
 
         // we cannot use max(number) because a varchar column returns unexpected results
-        $start = $this->repository->countCustomer();
+        $count = $this->repository->countCustomer();
+        $start = $count + $this->generatedNumbers;
         $i = 0;
         $createDate = new \DateTimeImmutable();
 
@@ -181,6 +189,10 @@ final class CustomerService
         if ($customer !== null) {
             return null;
         }
+
+        // Remember how far we advanced — including iterations spent skipping numbers that
+        // already exist — so the next call on this instance starts beyond the issued number.
+        $this->generatedNumbers = $start - $count;
 
         return $number;
     }

@@ -41,11 +41,11 @@ use Symfony\Component\HttpFoundation\Response;
 abstract class TimesheetAbstractController extends AbstractController
 {
     public function __construct(
-        protected TimesheetRepository $repository,
-        protected EventDispatcherInterface $dispatcher,
-        protected TimesheetService $service,
-        protected SystemConfiguration $configuration,
-        protected TagRepository $tagRepository
+        protected readonly TimesheetRepository $repository,
+        protected readonly EventDispatcherInterface $dispatcher,
+        protected readonly TimesheetService $service,
+        protected readonly SystemConfiguration $configuration,
+        protected readonly TagRepository $tagRepository
     ) {
     }
 
@@ -84,15 +84,15 @@ abstract class TimesheetAbstractController extends AbstractController
         }
 
         if ($this->configuration->isBreakTimeEnabled()) {
-            $table->addColumn('break', ['class' => 'text-end text-nowrap']);
+            $table->addColumn('break', ['class' => 'text-end text-nowrap', 'orderBy' => false]);
         }
 
         $table->addColumn('duration', ['class' => 'text-end text-nowrap']);
 
         if ($canSeeRate) {
             $table->addColumn('hourlyRate', ['class' => 'text-end d-none text-nowrap']);
-            $table->addColumn('internalRate', ['class' => 'text-end text-nowrap d-none d-xxl-table-cell']);
-            $table->addColumn('rate', ['class' => 'text-end text-nowrap']);
+            $table->addColumn('internalRate', ['class' => 'text-end text-nowrap d-none']);
+            $table->addColumn('rate', ['class' => 'text-end text-nowrap d-none']);
         }
 
         $table->addColumn('customer', ['class' => 'd-none d-md-table-cell']);
@@ -263,7 +263,14 @@ abstract class TimesheetAbstractController extends AbstractController
 
         $entries = $this->repository->getTimesheetResult($query);
 
-        return $exporter->render($entries->getResults(), $query);
+        $oldMaxExecTime = \ini_get('max_execution_time');
+        ini_set('max_execution_time', $this->configuration->getExportTimeout());
+
+        $response = $exporter->render($entries->getResults(), $query);
+
+        ini_set('max_execution_time', $oldMaxExecTime);
+
+        return $response;
     }
 
     protected function multiUpdate(Request $request): Response
@@ -358,9 +365,7 @@ abstract class TimesheetAbstractController extends AbstractController
                 }
 
                 if ($dto->isRecalculateRates()) {
-                    $timesheet->setFixedRate(null);
-                    $timesheet->setHourlyRate(null);
-                    $timesheet->setInternalRate(null);
+                    $timesheet->resetRates();
                     $execute = true;
                 } elseif (null !== $dto->getFixedRate()) {
                     $timesheet->setFixedRate($dto->getFixedRate());
